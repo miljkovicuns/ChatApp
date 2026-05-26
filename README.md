@@ -1,3 +1,3 @@
 # Projektni zadatak: SVT i KVT
 
-Student: SR XX/YYYY
+Student: SR 19/2024
