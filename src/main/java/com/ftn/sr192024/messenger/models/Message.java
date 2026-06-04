@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -24,16 +25,13 @@ public class Message {
     @Column(columnDefinition = "TEXT")
     private String text;
 
+    @CreationTimestamp
     @Column(name = "date_of_sending", nullable = false)
     private LocalDateTime dateOfSending;
 
     @ManyToOne
     @JoinColumn(name = "sender", nullable = false)
     private User sender;
-
-    @ManyToOne
-    @JoinColumn(name = "recipient", nullable = false)
-    private User recipient;
 
     @ManyToOne
     @JoinColumn(name = "reply_to_message_id")
@@ -45,4 +43,8 @@ public class Message {
     @ManyToOne
     @JoinColumn(name = "forwarded_from_message_id")
     private Message forwardedFrom;
+
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "chat_id")
+    private Chat chat;
 }
