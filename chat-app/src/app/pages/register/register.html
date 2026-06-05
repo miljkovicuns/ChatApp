@@ -1,0 +1,40 @@
+<div class="register-container">
+
+  <h2>Create Account</h2>
+
+  <form [formGroup]="form" (ngSubmit)="register()" class="register-form">
+
+    <input formControlName="firstName" placeholder="First Name" />
+    <div class="error" *ngIf="form.get('firstName')?.touched && form.get('firstName')?.invalid">
+      First name is required
+    </div>
+
+    <input formControlName="lastName" placeholder="Last Name" />
+
+    <input formControlName="username" placeholder="Username" />
+
+    <input type="password" formControlName="password" placeholder="Password" />
+
+    <input formControlName="phoneNumber" placeholder="Phone Number" />
+
+    <input formControlName="email" placeholder="Email" />
+
+    <div class="error" *ngIf="form.get('email')?.touched && form.get('email')?.errors">
+
+      <small *ngIf="form.get('email')?.errors?.['required']">
+        Email is required
+      </small>
+
+      <small *ngIf="form.get('email')?.errors?.['email']">
+        Enter a valid email address
+      </small>
+
+    </div>
+
+    <input type="file" (change)="onFileSelected($event)" />
+
+    <button type="submit">Register</button>
+
+  </form>
+
+</div>
