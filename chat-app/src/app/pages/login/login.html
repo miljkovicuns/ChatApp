@@ -1,1 +1,51 @@
-<p>login works!</p>
+<body>
+<div class="login-container">
+  <h2>Welcome Back</h2>
+  <form [formGroup]="loginForm" (ngSubmit)="onLogin()" class="login-form">
+    <!-- Email / Username field (flexible) -->
+    <input
+      formControlName="username"
+      type="text"
+      placeholder="Email or Username"
+      autocomplete="username"
+    />
+    <div class="error" *ngIf="loginForm.get('identifier')?.touched && loginForm.get('identifier')?.invalid">
+      <small *ngIf="loginForm.get('username')?.errors?.['required']">
+        Email or username is required
+      </small>
+      <small *ngIf="loginForm.get('username')?.errors?.['minlength']">
+        At least 3 characters required
+      </small>
+    </div>
+
+    <!-- Password field -->
+    <input
+      formControlName="password"
+      type="password"
+      placeholder="Password"
+      autocomplete="current-password"
+    />
+    <div class="error" *ngIf="loginForm.get('password')?.touched && loginForm.get('password')?.invalid">
+      <small *ngIf="loginForm.get('password')?.errors?.['required']">
+        Password is required
+      </small>
+      <small *ngIf="loginForm.get('password')?.errors?.['minlength']">
+        Password must be at least 6 characters
+      </small>
+    </div>
+
+    <!-- general form error display (server error or invalid credentials) -->
+    <div class="error" *ngIf="loginError">
+      <small>{{ loginError }}</small>
+    </div>
+
+    <button type="submit" [disabled]="loginForm.invalid || isLoggingIn">
+      <span *ngIf="!isLoggingIn">Sign In</span>
+      <span *ngIf="isLoggingIn">Signing in...</span>
+    </button>
+  </form>
+
+  <div class="register-link">
+    Don't have an account? <a routerLink="/register">Create Account</a>
+  </div>
+</div>

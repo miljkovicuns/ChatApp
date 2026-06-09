@@ -60,4 +60,7 @@ public class User {
 
     @Column(name = "last_online")
     private LocalDateTime lastOnline;
+
+    @Column(name = "role")
+    private RoleEnum role;
 }

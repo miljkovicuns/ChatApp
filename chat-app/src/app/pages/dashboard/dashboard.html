@@ -1,0 +1,235 @@
+<div class="dashboard-container">
+  <!-- Top Bar -->
+  <div class="top-bar">
+    <div class="logo-section">
+      <h1 class="logo">💬 ChatApp</h1>
+    </div>
+
+    <div class="user-section">
+      <div class="user-info">
+        <div class="user-avatar-small">
+          {{ (currentUser?.username?.charAt(0) || 'U') | uppercase }}
+        </div>
+        <span class="username">{{ currentUser?.username || 'User' }}</span>
+      </div>
+
+      <div class="action-buttons">
+        <button class="icon-btn" (click)="openProfileModal()" title="Profile">
+          👤
+        </button>
+        <button class="icon-btn" (click)="openSettingsModal()" title="Settings">
+          ⚙️
+        </button>
+        <button class="logout-btn" (click)="logout()" title="Logout">
+          🚪 Logout
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="search-bar">
+        <input
+          type="text"
+          placeholder="🔍 Search chats..."
+          [(ngModel)]="searchQuery"
+          [ngModelOptions]="{standalone: true}"
+        />
+      </div>
+
+      <div class="chat-list">
+        <!-- Chat items will be populated here -->
+        <div class="chat-item" *ngFor="let chat of filteredChats">
+          <div class="chat-avatar">
+            {{ chat.name?.charAt(0) || '?' }}
+          </div>
+          <div class="chat-info">
+            <div class="chat-name">{{ chat.name }}</div>
+            <div class="last-message">{{ chat.lastMessage }}</div>
+          </div>
+          <div class="chat-meta">
+            <div class="message-time">{{ chat.time }}</div>
+            <div class="unread-badge" *ngIf="chat.unread > 0">
+              {{ chat.unread }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chat Area -->
+    <div class="chat-area">
+      <div class="chat-header" *ngIf="selectedChat">
+        <div class="chat-header-info">
+          <div class="chat-avatar-large">
+            {{ selectedChat.name?.charAt(0) || '?' }}
+          </div>
+          <div class="chat-details">
+            <h3>{{ selectedChat.name }}</h3>
+            <span class="online-status" [class.online]="selectedChat.online">
+              {{ selectedChat.online ? 'Online' : 'Offline' }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="messages-area" *ngIf="selectedChat; else noChatSelected">
+        <div class="message" *ngFor="let message of messages" [class.own-message]="message.isOwn">
+          <div class="message-content">
+            <div class="message-text">{{ message.content }}</div>
+            <div class="message-time">{{ message.time }}</div>
+          </div>
+        </div>
+      </div>
+
+      <ng-template #noChatSelected>
+        <div class="no-chat-selected">
+          <div class="placeholder-content">
+            <div class="placeholder-icon">💬</div>
+            <h3>Select a chat to start messaging</h3>
+            <p>Choose a conversation from the sidebar</p>
+          </div>
+        </div>
+      </ng-template>
+
+      <div class="message-input-area" *ngIf="selectedChat">
+        <input
+          type="text"
+          placeholder="Type a message..."
+          [(ngModel)]="newMessage"
+          [ngModelOptions]="{standalone: true}"
+          (keyup.enter)="sendMessage()"
+        />
+        <button class="send-btn" (click)="sendMessage()">
+          📤 Send
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Profile Modal -->
+<div class="modal" *ngIf="showProfileModal" (click)="closeProfileModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Edit Profile</h2>
+      <button class="close-btn" (click)="closeProfileModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="avatar-section">
+        <div class="profile-avatar">
+          {{ (profileForm.get('username')?.value?.charAt(0) || 'U') | uppercase }}
+        </div>
+        <button class="change-avatar-btn">Change Avatar</button>
+      </div>
+
+      <div class="form-group">
+        <label>Username</label>
+        <input formControlName="username" type="text" placeholder="Enter username" />
+        <div class="error" *ngIf="profileForm.get('username')?.invalid && profileForm.get('username')?.touched">
+          Username is required (min 3 characters)
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Email</label>
+        <input formControlName="email" type="email" placeholder="Enter email" />
+        <div class="error" *ngIf="profileForm.get('email')?.invalid && profileForm.get('email')?.touched">
+          Valid email is required
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>First Name</label>
+          <input formControlName="firstName" type="text" placeholder="First name" />
+        </div>
+        <div class="form-group">
+          <label>Last Name</label>
+          <input formControlName="lastName" type="text" placeholder="Last name" />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Phone Number</label>
+        <input formControlName="phoneNumber" type="tel" placeholder="Phone number" />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="cancel-btn" (click)="closeProfileModal()">Cancel</button>
+      <button class="save-btn" (click)="updateProfile()" [disabled]="profileForm.invalid">
+        Save Changes
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="modal" *ngIf="showSettingsModal" (click)="closeSettingsModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Settings</h2>
+      <button class="close-btn" (click)="closeSettingsModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="settings-section">
+        <h3>Theme Preferences</h3>
+        <div class="settings-option">
+          <label>
+            <input type="radio" name="theme" value="light" checked /> Light Mode
+          </label>
+          <label>
+            <input type="radio" name="theme" value="dark" /> Dark Mode
+          </label>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h3>Notifications</h3>
+        <div class="settings-option">
+          <label>
+            <input type="checkbox" checked /> Enable sound notifications
+          </label>
+          <label>
+            <input type="checkbox" checked /> Show desktop notifications
+          </label>
+          <label>
+            <input type="checkbox" /> Play sound on message send
+          </label>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h3>Privacy</h3>
+        <div class="settings-option">
+          <label>
+            <input type="checkbox" checked /> Show last seen
+          </label>
+          <label>
+            <input type="checkbox" /> Read receipts
+          </label>
+          <label>
+            <input type="checkbox" checked /> Allow messages from anyone
+          </label>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h3>Language</h3>
+        <select class="language-select">
+          <option value="en">English</option>
+          <option value="es">Spanish</option>
+          <option value="fr">French</option>
+          <option value="de">German</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="cancel-btn" (click)="closeSettingsModal()">Cancel</button>
+      <button class="save-btn" (click)="closeSettingsModal()">Apply Changes</button>
+    </div>
+  </div>
+</div>
