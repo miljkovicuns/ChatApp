@@ -2,6 +2,7 @@ package com.ftn.sr192024.messenger.services;
 
 import com.ftn.sr192024.messenger.models.User;
 import com.ftn.sr192024.messenger.repository.UserRepository;
+import com.ftn.sr192024.messenger.security.CustomUserDetails;
 import lombok.AllArgsConstructor;
 import org.springframework.boot.security.autoconfigure.SecurityProperties;
 import org.springframework.context.annotation.Primary;
@@ -23,17 +24,20 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
     private UserRepository userRepository;
 
-
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        User user = userRepository.findByUsername(username).orElse(null);
-        return new org.springframework.security.core.userdetails.User(user.getUsername(),user.getPasswordHash(),getGrantedAuthority(user));
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
+
+        // Return CustomUserDetails instead of Spring's default User
+        return new CustomUserDetails(user);
     }
 
-    private Collection<GrantedAuthority> getGrantedAuthority(User user){
-        List<GrantedAuthority> grantedAuthorities = new ArrayList<>();
-        String role = "ROLE_" + user.getRole();
-        grantedAuthorities.add(new SimpleGrantedAuthority(role));
-        return grantedAuthorities;
+    // Optional: Add method to load by ID (useful for JWT token validation)
+    public UserDetails loadUserById(java.util.UUID userId) throws UsernameNotFoundException {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with id: " + userId));
+
+        return new CustomUserDetails(user);
     }
 }
