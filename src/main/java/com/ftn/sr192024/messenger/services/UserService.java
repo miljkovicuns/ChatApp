@@ -14,7 +14,11 @@ public class UserService {
 
     private UserRepository userRepository;
 
-    public List<User> findAllByIds(List<UUID> userIds){
+    public List<User> findAllByIds(List<UUID> userIds) {
         return userRepository.findAllById(userIds);
+    }
+
+    public User findById(UUID id) {
+        return userRepository.findById(id).orElse(null);
     }
 }

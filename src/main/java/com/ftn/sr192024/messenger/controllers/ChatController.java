@@ -5,7 +5,9 @@ import com.ftn.sr192024.messenger.models.dto.GroupChatRequest;
 import com.ftn.sr192024.messenger.repository.ChatRepository;
 import com.ftn.sr192024.messenger.services.ChatService;
 import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
 import org.apache.coyote.Response;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,15 +25,17 @@ import static com.ftn.sr192024.messenger.security.SecurityUtils.getCurrentUserId
 @Controller
 @RequestMapping("/api/chats")
 @AllArgsConstructor
+@NoArgsConstructor
 public class ChatController {
 
+    @Autowired
     private ChatService chatService;
 
     @GetMapping("/my-chats")
     public ResponseEntity<List<Chat>> getMyChats() {
         UUID id = getCurrentUserId();
 
-        ArrayList<Chat> myChats = chatService.getUsersChat(id);
+        List<Chat> myChats = chatService.getUsersChat(id);
         return ResponseEntity.ok(myChats);
     }
 

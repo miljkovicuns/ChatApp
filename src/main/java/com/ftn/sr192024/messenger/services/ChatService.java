@@ -5,6 +5,7 @@ import com.ftn.sr192024.messenger.models.User;
 import com.ftn.sr192024.messenger.repository.ChatRepository;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -16,13 +17,13 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ChatService {
-
+    @Autowired
     private ChatRepository chatRepository;
 
     private UserService userService;
 
-    public ArrayList<Chat> getUsersChat(UUID id) {
-        return chatRepository.findChatByUser(id).orElseThrow(() -> new RuntimeException("User not found"));
+    public List<Chat> getUsersChat(UUID id) {
+        return chatRepository.findChatByParticipants(id).orElseThrow(() -> new RuntimeException("User not found"));
     }
 
     public Chat createDirectChat(List<UUID> participantIds){

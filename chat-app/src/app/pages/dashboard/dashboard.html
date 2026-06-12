@@ -40,6 +40,12 @@
         />
       </div>
 
+      <div class="create-chat-container">
+        <button class="create-chat-btn" (click)="openCreateChatModal()">
+          ➕ Create New Chat
+        </button>
+      </div>
+
       <div class="chat-list">
         <!-- Chat items will be populated here -->
         <div class="chat-item" *ngFor="let chat of filteredChats">
@@ -230,6 +236,107 @@
     <div class="modal-footer">
       <button class="cancel-btn" (click)="closeSettingsModal()">Cancel</button>
       <button class="save-btn" (click)="closeSettingsModal()">Apply Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- Create Chat Modal -->
+<div class="modal" *ngIf="showCreateChatModal" (click)="closeCreateChatModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Create New Chat</h2>
+      <button class="close-btn" (click)="closeCreateChatModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <!-- Step 1: Select Chat Type -->
+      <div *ngIf="createChatStep === 'type'">
+        <div class="chat-type-options">
+          <div class="chat-type-option" (click)="selectChatType('direct')">
+            <div class="chat-type-icon">👤</div>
+            <h3>Direct Chat</h3>
+            <p>Chat with one person privately</p>
+          </div>
+          <div class="chat-type-option" (click)="selectChatType('group')">
+            <div class="chat-type-icon">👥</div>
+            <h3>Group Chat</h3>
+            <p>Chat with multiple people at once</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2: Select Participants -->
+      <div *ngIf="createChatStep === 'participants'">
+        <div class="selected-participants" *ngIf="selectedParticipants.length > 0">
+          <h4>Selected ({{ selectedParticipants.length }})</h4>
+          <div class="participant-tags">
+            <span *ngFor="let p of selectedParticipants" class="participant-tag">
+              {{ p.firstName }} {{ p.lastName }} {{p.phoneNumber}}
+              <button (click)="toggleParticipantSelection(p)">✕</button>
+            </span>
+          </div>
+        </div>
+
+        <div class="search-users">
+          <input type="text" placeholder="🔍 Search users..." [(ngModel)]="searchUserQuery" />
+        </div>
+
+        <div class="users-list">
+          <div *ngFor="let user of filteredAvailableUsers" class="user-item"
+               [class.selected]="isParticipantSelected(user)"
+               (click)="toggleParticipantSelection(user)">
+            <div class="user-avatar">{{ user.firstName?.charAt(0) }}{{ user.lastName?.charAt(0) }}</div>
+            <div class="user-info">
+              <div class="user-name">{{ user.firstName }} {{ user.lastName }}</div>
+              <div class="user-username">@{{ user.username }}</div>
+            </div>
+            <div class="selection-check" *ngIf="isParticipantSelected(user)">✓</div>
+          </div>
+        </div>
+
+        <div class="error" *ngIf="createChatError">{{ createChatError }}</div>
+
+        <div class="modal-footer">
+          <button class="cancel-btn" (click)="goBack()">Back</button>
+          <button class="save-btn" (click)="proceedToNextStep()" [disabled]="selectedParticipants.length === 0">
+            {{ selectedChatType === 'direct' ? 'Create Chat' : 'Next' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 3: Group Details -->
+      <div *ngIf="createChatStep === 'group-details'">
+        <div class="form-group">
+          <label>Group Name *</label>
+          <input type="text" formControlName="name" placeholder="Enter group name" />
+          <div class="error" *ngIf="groupChatForm.get('name')?.invalid && groupChatForm.get('name')?.touched">
+            Group name is required (min 3 characters)
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Description (optional)</label>
+          <textarea formControlName="description" placeholder="Describe the group purpose" rows="3"></textarea>
+        </div>
+
+        <div class="selected-participants-summary">
+          <h4>Participants ({{ selectedParticipants.length + 1 }} including you)</h4>
+          <div class="participant-list">
+            <span *ngFor="let p of selectedParticipants" class="participant-name">
+              {{ p.firstName }} {{ p.lastName }}
+            </span>
+            <span class="participant-name you">You ({{ currentUser?.firstName }} {{ currentUser?.lastName }})</span>
+          </div>
+        </div>
+
+        <div class="error" *ngIf="createChatError">{{ createChatError }}</div>
+
+        <div class="modal-footer">
+          <button class="cancel-btn" (click)="goBack()">Back</button>
+          <button class="save-btn" (click)="createGroupChat()" [disabled]="groupChatForm.invalid || isCreatingChat">
+            {{ isCreatingChat ? 'Creating...' : 'Create Group Chat' }}
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </div>

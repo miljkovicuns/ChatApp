@@ -3,6 +3,8 @@ export interface Message {
   content: string;
   senderId: string;
   chatId: string;
-  sentDate: Date;
-
+  timestamp: Date;
+  read: boolean;
+  readAt?: Date;
+  isOwn?: boolean; // Frontend-only property
 }
