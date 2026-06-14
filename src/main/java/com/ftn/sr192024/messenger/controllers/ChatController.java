@@ -23,7 +23,7 @@ import java.util.UUID;
 import static com.ftn.sr192024.messenger.security.SecurityUtils.getCurrentUserId;
 
 @Controller
-@RequestMapping("/api/chats")
+@RequestMapping("/chats")
 @AllArgsConstructor
 @NoArgsConstructor
 public class ChatController {

@@ -54,7 +54,8 @@ export class Auth {
           this.saveToken(response.token)
         }
         if(response.username) {
-          this.saveUser({username: response.username})
+          console.log(response)
+          this.saveUser(response.user)
         }
       })
     )

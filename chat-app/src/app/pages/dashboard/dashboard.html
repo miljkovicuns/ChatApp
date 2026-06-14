@@ -48,21 +48,17 @@
 
       <div class="chat-list">
         <!-- Chat items will be populated here -->
-        <div class="chat-item" *ngFor="let chat of filteredChats">
-          <div class="chat-avatar">
-            {{ chat.name?.charAt(0) || '?' }}
-          </div>
-          <div class="chat-info">
-            <div class="chat-name">{{ chat.name }}</div>
-            <div class="last-message">{{ chat.lastMessage }}</div>
-          </div>
-          <div class="chat-meta">
-            <div class="message-time">{{ chat.time }}</div>
-            <div class="unread-badge" *ngIf="chat.unread > 0">
-              {{ chat.unread }}
+        @for (chat of chats; track chat.id) {
+          <div class="chat-item">
+            <div class="chat-avatar">
+              {{ getChatAvatar(chat) }}
+            </div>
+            <div class="chat-info">
+              <div class="chat-name">{{ getChatDisplayName(chat) }}</div>
+              <div class="last-message">{{ chat.lastMessageAt }}</div>
             </div>
           </div>
-        </div>
+        }
       </div>
     </div>
 
@@ -127,12 +123,12 @@
     <div class="modal-body">
       <div class="avatar-section">
         <div class="profile-avatar">
-          {{ (profileForm.get('username')?.value?.charAt(0) || 'U') | uppercase }}
+          {{ (currentUser.profileImage || profileForm.get('username')?.value?.charAt(0) || 'U') | uppercase }}
         </div>
         <button class="change-avatar-btn">Change Avatar</button>
       </div>
 
-      <div class="form-group">
+      <div class="form-group" [formGroup]="profileForm" ]>
         <label>Username</label>
         <input formControlName="username" type="text" placeholder="Enter username" />
         <div class="error" *ngIf="profileForm.get('username')?.invalid && profileForm.get('username')?.touched">
@@ -140,7 +136,7 @@
         </div>
       </div>
 
-      <div class="form-group">
+      <div class="form-group" [formGroup]="profileForm">
         <label>Email</label>
         <input formControlName="email" type="email" placeholder="Enter email" />
         <div class="error" *ngIf="profileForm.get('email')?.invalid && profileForm.get('email')?.touched">
@@ -149,17 +145,17 @@
       </div>
 
       <div class="form-row">
-        <div class="form-group">
+        <div class="form-group" [formGroup]="profileForm">
           <label>First Name</label>
           <input formControlName="firstName" type="text" placeholder="First name" />
         </div>
-        <div class="form-group">
+        <div class="form-group" [formGroup]="profileForm">
           <label>Last Name</label>
           <input formControlName="lastName" type="text" placeholder="Last name" />
         </div>
       </div>
 
-      <div class="form-group">
+      <div class="form-group" [formGroup]="profileForm">
         <label>Phone Number</label>
         <input formControlName="phoneNumber" type="tel" placeholder="Phone number" />
       </div>
@@ -297,7 +293,7 @@
 
         <div class="modal-footer">
           <button class="cancel-btn" (click)="goBack()">Back</button>
-          <button class="save-btn" (click)="proceedToNextStep()" [disabled]="selectedParticipants.length === 0">
+          <button class="save-btn" (click)="proceedToNextStep(); closeCreateChatModal()" [disabled]="selectedParticipants.length === 0">
             {{ selectedChatType === 'direct' ? 'Create Chat' : 'Next' }}
           </button>
         </div>

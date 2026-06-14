@@ -16,8 +16,8 @@ import java.util.UUID;
 
 @Repository
 public interface ChatRepository extends JpaRepository<Chat, UUID> {
-    @Query(value = "SELECT c FROM Chat c JOIN c.participants p WHERE p.id = :id")
-    Optional<List<Chat>> findChatByParticipants(UUID id);
+    @Query("SELECT c FROM Chat c JOIN c.participants p WHERE p.id = :userId")
+    Optional<List<Chat>> findAllChatsByUserId(@Param("userId") UUID userId);
     @Query(value = "SELECT c.* FROM chat c " +
             "WHERE c.group_chat = false " +
             "AND EXISTS (SELECT 1 FROM chat_participants cp1 WHERE cp1.chat_id = c.id AND cp1.user_id = :userId1) " +

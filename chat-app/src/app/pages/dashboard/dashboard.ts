@@ -1,4 +1,4 @@
-import {Component, DestroyRef, inject, OnInit} from '@angular/core';
+import {ChangeDetectorRef, Component, DestroyRef, inject, OnInit} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {Auth} from '../../services/auth';
 import {FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators} from '@angular/forms';
@@ -10,6 +10,7 @@ import {Chat} from '../../models/chat';
 import {UserService} from '../../services/user-service';
 import {CreateGroupChatRequest} from '../../models/create-group-chat-request';
 import {SendMessageRequest} from '../../models/send-message-request';
+import {Observable} from 'rxjs';
 
 @Component({
   selector: 'app-dashboard',
@@ -24,6 +25,7 @@ export class Dashboard implements OnInit {
   private userService = inject(UserService)
   private fb = inject(FormBuilder)
   private destroyRef = inject(DestroyRef)
+  private cdr = inject(ChangeDetectorRef)
 
   currentUser: any = null;
   showProfileModal = false;
@@ -50,7 +52,7 @@ export class Dashboard implements OnInit {
   groupChatForm: FormGroup
 
   // Data containers (will be populated from API)
-  chats: any[] = [];
+  chats: Chat[] = [];
   messages: any[] = [];
 
   // Profile form
@@ -85,11 +87,10 @@ export class Dashboard implements OnInit {
 
   ngOnInit() {
     this.loadCurrentUser();
-    this.loadAvailableUsers()
   }
 
   loadCurrentUser() {
-    // If getUser() returns a Promise or Observable, handle it properly
+    console.log("loadCurrentUser")
     this.currentUser = this.authService.getUser();
 
     if (this.currentUser) {
@@ -100,10 +101,9 @@ export class Dashboard implements OnInit {
         lastName: this.currentUser.lastName || '',
         phoneNumber: this.currentUser.phoneNumber || ''
       });
-
-      // Load chats and users AFTER currentUser is set
       this.loadChats();
       this.loadAvailableUsers();
+
     } else {
       // If getUser is async, try to fetch from API
       this.userService.getCurrentUser().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
@@ -117,8 +117,6 @@ export class Dashboard implements OnInit {
             lastName: user.lastName || '',
             phoneNumber: user.phoneNumber || ''
           });
-
-          // Load chats and users after currentUser is loaded
           this.loadChats();
           this.loadAvailableUsers();
         },
@@ -133,6 +131,7 @@ export class Dashboard implements OnInit {
   }
 
   loadChats() {
+    console.log("loading chats...")
     this.isLoadingChats = true
     this.chatService.getUserChats()
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -140,6 +139,7 @@ export class Dashboard implements OnInit {
         next: (chats: Chat[]) => {
           this.chats = chats
           this.isLoadingChats = false
+          this.cdr.detectChanges()
         },
         error: (err) => {
           console.error('Error loading chats:', err)
@@ -273,6 +273,7 @@ export class Dashboard implements OnInit {
         next: (newChat: Chat) => {
           this.isCreatingChat = false;
           this.chats.unshift(newChat);
+          this.cdr.detectChanges();
           this.closeCreateChatModal();
         },
         error: (err) => {

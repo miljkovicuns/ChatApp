@@ -17,6 +17,6 @@ export class UserService {
 
 
   getCurrentUser(): Observable<User> {
-
+    return this.http.get<User>(`${this.apiUrl}/me`)
   }
 }

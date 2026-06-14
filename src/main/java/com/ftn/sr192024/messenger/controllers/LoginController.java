@@ -3,6 +3,7 @@ package com.ftn.sr192024.messenger.controllers;
 import com.ftn.sr192024.messenger.models.dto.LoginRequest;
 import com.ftn.sr192024.messenger.models.dto.LoginResponse;
 import com.ftn.sr192024.messenger.models.dto.RegisterDto;
+import com.ftn.sr192024.messenger.security.CustomUserDetails;
 import com.ftn.sr192024.messenger.security.JWTService;
 import com.ftn.sr192024.messenger.services.AuthService;
 import lombok.AllArgsConstructor;
@@ -20,7 +21,7 @@ import java.io.IOException;
 
 @RestController
 @CrossOrigin(origins = "http://localhost:4200")
-@RequestMapping("/api/auth")
+@RequestMapping("/auth")
 @AllArgsConstructor
 public class LoginController{
 
@@ -49,13 +50,13 @@ public class LoginController{
                 )
         );
 
-        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
         assert userDetails != null;
         String token = jwtService.generateToken(userDetails);
 
         LoginResponse response = new LoginResponse();
         response.setToken(token);
-        response.setUsername(userDetails.getUsername());
+        response.setUser(userDetails.getUser());
         response.setMessage("Login successful");
 
         return response;

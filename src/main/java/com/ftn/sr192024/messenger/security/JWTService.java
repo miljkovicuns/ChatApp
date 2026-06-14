@@ -22,6 +22,9 @@ public class JWTService {
     @Value("${jwt.expiration}")
     private Long expiration;
 
+    @Value("${jwt.clock-skew:60}")
+    private long clockSkew;
+
     private Key getSigningKey() {
         byte[] keyBytes = secret.getBytes();
         return Keys.hmacShaKeyFor(keyBytes);
@@ -43,6 +46,7 @@ public class JWTService {
     private Claims extractAllClaims(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(getSigningKey())
+                .setAllowedClockSkewSeconds(clockSkew)
                 .build()
                 .parseClaimsJws(token)
                 .getBody();
