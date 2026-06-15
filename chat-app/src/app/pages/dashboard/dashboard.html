@@ -8,7 +8,16 @@
     <div class="user-section">
       <div class="user-info">
         <div class="user-avatar-small">
-          {{ (currentUser?.username?.charAt(0) || 'U') | uppercase }}
+          @if (getUserAvatar(currentUser)){
+            <img [src]="getUserAvatar(currentUser)"
+                 [alt]="currentUser?.username"
+                 class="avatar-image">
+          }
+          @if (!getUserAvatar(currentUser)){
+            <span>
+              {{ (currentUser?.username?.charAt(0) || 'U') | uppercase }}
+            </span>
+          }
         </div>
         <span class="username">{{ currentUser?.username || 'User' }}</span>
       </div>
@@ -51,7 +60,16 @@
         @for (chat of chats; track chat.id) {
           <div class="chat-item">
             <div class="chat-avatar">
-              {{ getChatAvatar(chat) }}
+              @if (isImageAvatar(getChatAvatar(chat))) {
+                <img [src]="getChatAvatar(chat)"
+                     [alt]="getChatDisplayName(chat)"
+                     class="avatar-image">
+              }
+              @if (!isImageAvatar(getChatAvatar(chat))) {
+                <span>
+                  {{ getChatAvatar(chat) }}
+                </span>
+              }
             </div>
             <div class="chat-info">
               <div class="chat-name">{{ getChatDisplayName(chat) }}</div>
@@ -67,7 +85,16 @@
       <div class="chat-header" *ngIf="selectedChat">
         <div class="chat-header-info">
           <div class="chat-avatar-large">
-            {{ selectedChat.name?.charAt(0) || '?' }}
+            @if (selectedChat && getUserAvatar(selectedChat)) {
+              <img [src]="getUserAvatar(selectedChat)"
+                   [alt]="selectedChat.name"
+                   class="avatar-image-large">
+            }
+            @if (selectedChat && !getUserAvatar(selectedChat)) {
+              <span>
+                {{ selectedChat.name?.charAt(0) || '?' }}
+              </span>
+            }
           </div>
           <div class="chat-details">
             <h3>{{ selectedChat.name }}</h3>
@@ -122,10 +149,24 @@
     </div>
     <div class="modal-body">
       <div class="avatar-section">
-        <div class="profile-avatar">
-          {{ (currentUser.profileImage || profileForm.get('username')?.value?.charAt(0) || 'U') | uppercase }}
+        <div class="profile-avatar" (click)="fileInput.click()">
+          @if (profileImagePreview) {
+            <img [src]="profileImagePreview"
+                alt="Profile avatar"
+                class="profile-avatar-image">
+          }
+          @if (!profileImagePreview) {
+            <span>
+              {{ (profileForm.get('username')?.value?.charAt(0) || 'U') | uppercase }}
+            </span>
+          }
         </div>
-        <button class="change-avatar-btn">Change Avatar</button>
+        <input type="file"
+               #fileInput
+               accept="image/*"
+               style="display: none"
+               (change)="onFileSelected($event)">
+        <button class="change-avatar-btn" (click)="fileInput.click()">Change Avatar</button>
       </div>
 
       <div class="form-group" [formGroup]="profileForm" ]>
@@ -280,7 +321,18 @@
           <div *ngFor="let user of filteredAvailableUsers" class="user-item"
                [class.selected]="isParticipantSelected(user)"
                (click)="toggleParticipantSelection(user)">
-            <div class="user-avatar">{{ user.firstName?.charAt(0) }}{{ user.lastName?.charAt(0) }}</div>
+            <div class="user-avatar">
+              @if (user.profileImage) {
+                <img [src]="getImageUrl(user.profileImage)"
+                    [alt]="user.firstName"
+                    class="avatar-image-small">
+              }
+              @if (!user.profileImage) {
+                <span>
+                  {{ user.firstName?.charAt(0) }}{{ user.lastName?.charAt(0) }}
+                </span>
+              }
+            </div>
             <div class="user-info">
               <div class="user-name">{{ user.firstName }} {{ user.lastName }}</div>
               <div class="user-username">@{{ user.username }}</div>

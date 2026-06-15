@@ -1,11 +1,13 @@
 package com.ftn.sr192024.messenger.controllers;
 
+import com.ftn.sr192024.messenger.models.User;
 import com.ftn.sr192024.messenger.models.dto.LoginRequest;
 import com.ftn.sr192024.messenger.models.dto.LoginResponse;
 import com.ftn.sr192024.messenger.models.dto.RegisterDto;
 import com.ftn.sr192024.messenger.security.CustomUserDetails;
 import com.ftn.sr192024.messenger.security.JWTService;
 import com.ftn.sr192024.messenger.services.AuthService;
+import com.ftn.sr192024.messenger.services.UserService;
 import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -30,6 +32,8 @@ public class LoginController{
     private JWTService jwtService;
 
     private AuthService authService;
+
+    private UserService userService;
 
     @PostMapping("/register")
     public ResponseEntity<?> register(
@@ -56,6 +60,7 @@ public class LoginController{
 
         LoginResponse response = new LoginResponse();
         response.setToken(token);
+        System.out.println(userService.findById(userDetails.getId()).getImage() != null);
         response.setUser(userDetails.getUser());
         response.setMessage("Login successful");
 

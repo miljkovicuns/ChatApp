@@ -1,5 +1,5 @@
 import {ChangeDetectorRef, Component, DestroyRef, inject, OnInit} from '@angular/core';
-import {CommonModule} from '@angular/common';
+import {CommonModule, NgOptimizedImage} from '@angular/common';
 import {Auth} from '../../services/auth';
 import {FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators} from '@angular/forms';
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
@@ -11,11 +11,12 @@ import {UserService} from '../../services/user-service';
 import {CreateGroupChatRequest} from '../../models/create-group-chat-request';
 import {SendMessageRequest} from '../../models/send-message-request';
 import {Observable} from 'rxjs';
+import {DomSanitizer, SafeUrl} from '@angular/platform-browser';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FormsModule],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, NgOptimizedImage],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css'
 })
@@ -26,6 +27,7 @@ export class Dashboard implements OnInit {
   private fb = inject(FormBuilder)
   private destroyRef = inject(DestroyRef)
   private cdr = inject(ChangeDetectorRef)
+  private sanitizer = inject(DomSanitizer)
 
   currentUser: any = null;
   showProfileModal = false;
@@ -57,6 +59,8 @@ export class Dashboard implements OnInit {
 
   // Profile form
   profileForm: FormGroup;
+  selectedImageFile: File | null = null
+  profileImagePreview: string | SafeUrl | null = null
 
   // Settings
   settings = {
@@ -128,6 +132,66 @@ export class Dashboard implements OnInit {
         }
       });
     }
+  }
+
+  getImageUrl(imageString: string | null | undefined): SafeUrl | string {
+    if(!imageString) {
+      return ''
+    }
+
+    if (imageString.startsWith('data:image')) {
+      return this.sanitizer.bypassSecurityTrustUrl(imageString);
+    }
+
+    // Check if it's base64 without prefix
+    if (this.isBase64(imageString)) {
+      return this.sanitizer.bypassSecurityTrustUrl(`data:image/png;base64,${imageString}`);
+    }
+
+    // Check if it's a regular URL
+    if (imageString.startsWith('http://') || imageString.startsWith('https://')) {
+      return imageString;
+    }
+
+    // If none of the above, return as is (might be base64 without detection)
+    return this.sanitizer.bypassSecurityTrustUrl(`data:image/png;base64,${imageString}`);
+  }
+
+  isBase64(str: string): boolean {
+    try {
+      // Check if it looks like base64 (only contains valid base64 chars)
+      return /^[A-Za-z0-9+/=]+$/.test(str) && str.length % 4 === 0;
+    } catch (err) {
+      return false;
+    }
+  }
+
+  getUserAvatar(user: any): SafeUrl | string {
+    if (user?.image) {
+      return this.getImageUrl(user.image);
+    }
+    return ''; // Will show initials
+  }
+
+  onFileSelected(event: Event) {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (file) {
+      this.selectedImageFile = file;
+
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        this.profileImagePreview = this.sanitizer.bypassSecurityTrustUrl(e.target?.result as string);
+        this.profileForm.patchValue({
+          image: e.target?.result
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  isImageAvatar(avatar: string | SafeUrl): boolean {
+    return typeof avatar === 'object' || (typeof avatar === 'string' && avatar.startsWith('data:image'));
   }
 
   loadChats() {
