@@ -10,4 +10,7 @@ export interface User {
   updatedAt?: Date;
   lastOnline?: Date;
   role: string;
+  online: boolean;
+  hasImage: boolean;
+  formattedLastSeen: string;
 }

@@ -63,4 +63,10 @@ public class User {
 
     @Column(name = "role")
     private RoleEnum role;
+
+    @PreUpdate
+    @PrePersist
+    public void updateLastOnline() {
+        this.lastOnline = LocalDateTime.now();
+    }
 }

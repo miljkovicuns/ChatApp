@@ -12,6 +12,7 @@ import {CreateGroupChatRequest} from '../../models/create-group-chat-request';
 import {SendMessageRequest} from '../../models/send-message-request';
 import {Observable} from 'rxjs';
 import {DomSanitizer, SafeUrl} from '@angular/platform-browser';
+import {UserFilterParams} from '../../models/user-filter-params';
 
 @Component({
   selector: 'app-dashboard',
@@ -42,6 +43,7 @@ export class Dashboard implements OnInit {
   searchQuery = '';
   isLoadingChats = false;
   isLoadingMessages = false;
+  isLoadingUsers = false
 
   createChatStep: 'type' | 'participants' | 'group-details' = 'type';
   selectedChatType: 'direct' | 'group' = 'direct';
@@ -62,6 +64,13 @@ export class Dashboard implements OnInit {
   selectedImageFile: File | null = null
   profileImagePreview: string | SafeUrl | null = null
 
+  //User filtering during chat creation
+  showFilterPanel = false;
+  filterByLastSeen: 'all' | 'today' | 'week' | 'month' | 'offline' = 'all';
+  filterByHasImage: 'all' | 'hasImage' | 'noImage' = 'all';
+  sortBy: 'name' | 'lastSeen' | 'recent' = 'name';
+  sortOrder: 'asc' | 'desc' = 'asc';
+
   // Settings
   settings = {
     theme: 'light',
@@ -73,6 +82,15 @@ export class Dashboard implements OnInit {
     allowMessagesFromAnyone: true,
     language: 'en'
   };
+
+  filterParams: UserFilterParams = {
+    lastSeen: 'all',
+    hasImage: 'all',
+    sortBy: 'name',
+    sortOrder: 'asc'
+  };
+
+  private heartbeatInterval: any = null;
 
   constructor() {
     this.profileForm = this.fb.group({
@@ -90,12 +108,39 @@ export class Dashboard implements OnInit {
   }
 
   ngOnInit() {
-    this.loadCurrentUser();
+    this.loadCurrentUser()
+    this.startHeartbeat()
+  }
+
+  ngOnDestroy() {
+    this.stopHeartbeat()
+  }
+
+  startHeartbeat() {
+    // Update last seen every minute
+    this.heartbeatInterval = setInterval(() => {
+      if (this.currentUser) {
+        this.userService.updateLastSeen().subscribe({
+          next: () => {
+            console.log('Heartbeat sent');
+          },
+          error: (err) => {
+            console.error('Heartbeat failed:', err);
+          }
+        });
+      }
+    }, 60000); // 60 seconds
+  }
+
+  stopHeartbeat() {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval)
+      this.heartbeatInterval = null
+    }
   }
 
   loadCurrentUser() {
-    console.log("loadCurrentUser")
-    this.currentUser = this.authService.getUser();
+    this.currentUser = this.authService.getUser()
 
     if (this.currentUser) {
       this.profileForm.patchValue({
@@ -105,15 +150,15 @@ export class Dashboard implements OnInit {
         lastName: this.currentUser.lastName || '',
         phoneNumber: this.currentUser.phoneNumber || ''
       });
-      this.loadChats();
-      this.loadAvailableUsers();
+      this.loadChats()
+      this.loadAvailableUsers()
 
     } else {
       // If getUser is async, try to fetch from API
       this.userService.getCurrentUser().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: (user) => {
-          this.currentUser = user;
-          this.authService.saveUser(user);
+          this.currentUser = user
+          this.authService.saveUser(user)
           this.profileForm.patchValue({
             username: user.username || '',
             email: user.email || '',
@@ -121,8 +166,8 @@ export class Dashboard implements OnInit {
             lastName: user.lastName || '',
             phoneNumber: user.phoneNumber || ''
           });
-          this.loadChats();
-          this.loadAvailableUsers();
+          this.loadChats()
+          this.loadAvailableUsers()
         },
         error: (err) => {
           console.error('Error loading current user:', err);
@@ -231,27 +276,76 @@ export class Dashboard implements OnInit {
   }
 
   loadAvailableUsers() {
-    // Make sure currentUser exists before filtering
     if (!this.currentUser?.id) {
       console.log('Current user not loaded yet, retrying...');
-      // Retry after a short delay
       setTimeout(() => this.loadAvailableUsers(), 500);
       return;
     }
 
-    this.userService.getAllUsers()
+    this.isLoadingUsers = true;
+
+    // Update filter params with search query
+    this.filterParams.searchQuery = this.searchUserQuery;
+
+    console.log('Calling API with params:', this.filterParams);
+
+    this.userService.getFilteredUsers(this.filterParams)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (users: User[]) => {
-          console.log('All users received:', users);
-          console.log('Current user:', this.currentUser);
-          this.availableUsers = users.filter(user => user.id !== this.currentUser?.id);
-          console.log('Available users after filter:', this.availableUsers);
+          console.log('Received users:', users);
+          this.availableUsers = users;
+          this.isLoadingUsers = false;
+          this.cdr.detectChanges();
         },
         error: (err) => {
           console.error('Error loading users:', err);
+          this.isLoadingUsers = false;
         }
       });
+  }
+
+  applyFilters() {
+    this.loadAvailableUsers();
+  }
+
+  onFilterChange() {
+    this.applyFilters();
+  }
+
+  onSortChange() {
+    this.applyFilters();
+  }
+
+  toggleFilterPanel() {
+    this.showFilterPanel = !this.showFilterPanel;
+  }
+
+  resetFilters() {
+    this.filterParams = {
+      lastSeen: 'all',
+      hasImage: 'all',
+      sortBy: 'name',
+      sortOrder: 'asc'
+    };
+    this.searchUserQuery = '';
+    this.loadAvailableUsers();
+  }
+
+  getActiveFilterCount(): number {
+    let count = 0;
+    if (this.filterParams.lastSeen && this.filterParams.lastSeen !== 'all') count++;
+    if (this.filterParams.hasImage && this.filterParams.hasImage !== 'all') count++;
+    if (this.searchUserQuery) count++;
+    return count;
+  }
+
+  isUserOnline(user: User): boolean {
+    return user.online;
+  }
+
+  getLastSeenText(user: User): string {
+    return user.formattedLastSeen;
   }
 
   loadSettings() {
