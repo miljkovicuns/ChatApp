@@ -70,4 +70,8 @@ public class ChatService {
 
         return chat;
     }
+
+    public Chat findById(UUID chatId) {
+        return chatRepository.findById(chatId).orElse(null);
+    }
 }

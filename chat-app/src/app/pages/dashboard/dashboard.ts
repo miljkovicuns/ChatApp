@@ -1,4 +1,4 @@
-import {ChangeDetectorRef, Component, DestroyRef, inject, OnInit} from '@angular/core';
+import {ChangeDetectorRef, Component, DestroyRef, ElementRef, inject, OnInit, ViewChild} from '@angular/core';
 import {CommonModule, NgOptimizedImage} from '@angular/common';
 import {Auth} from '../../services/auth';
 import {FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators} from '@angular/forms';
@@ -17,7 +17,7 @@ import {UserFilterParams} from '../../models/user-filter-params';
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FormsModule, NgOptimizedImage],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css'
 })
@@ -38,7 +38,7 @@ export class Dashboard implements OnInit {
   profileError: string | null = null;
 
   // Chat-related properties
-  selectedChat: any = null;
+  selectedChat: Chat | null = null;
   newMessage = '';
   searchQuery = '';
   isLoadingChats = false;
@@ -89,6 +89,10 @@ export class Dashboard implements OnInit {
     sortBy: 'name',
     sortOrder: 'asc'
   };
+
+  @ViewChild('messagesContainer') private messagesContainer!: ElementRef;
+
+  private shouldScrollToBottom = false;
 
   private heartbeatInterval: any = null;
 
@@ -263,16 +267,19 @@ export class Dashboard implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (messages: any[]) => {
+          // Just add the isOwn flag, keep everything else as-is
           this.messages = messages.map(msg => ({
             ...msg,
-          }))
-          this.isLoadingMessages = false
+            isOwn: msg.sender?.id === this.currentUser?.id
+          }));
+          this.isLoadingMessages = false;
+          this.cdr.detectChanges();
         },
         error: (err) => {
-          console.error('Error loading messages:', err)
-          this.isLoadingMessages = false
+          console.error('Error loading messages:', err);
+          this.isLoadingMessages = false;
         }
-      })
+      });
   }
 
   loadAvailableUsers() {
@@ -287,13 +294,10 @@ export class Dashboard implements OnInit {
     // Update filter params with search query
     this.filterParams.searchQuery = this.searchUserQuery;
 
-    console.log('Calling API with params:', this.filterParams);
-
     this.userService.getFilteredUsers(this.filterParams)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (users: User[]) => {
-          console.log('Received users:', users);
           this.availableUsers = users;
           this.isLoadingUsers = false;
           this.cdr.detectChanges();
@@ -441,6 +445,14 @@ export class Dashboard implements OnInit {
       });
   }
 
+  getOtherParticipant(chat: Chat) {
+    const user = chat.participants.filter(user => user.id !== this.currentUser.id).at(0)
+    if(!user) {
+      return null
+    }
+    return user
+  }
+
   createGroupChat() {
     if (this.groupChatForm.invalid) {
       this.groupChatForm.markAllAsTouched();
@@ -484,8 +496,6 @@ export class Dashboard implements OnInit {
   }
 
   get filteredAvailableUsers() {
-    console.log('Search query:', this.searchUserQuery);
-    console.log('Available users:', this.availableUsers);
 
     if (!this.searchUserQuery) return this.availableUsers;
 
@@ -497,7 +507,6 @@ export class Dashboard implements OnInit {
       `${user.firstName} ${user.lastName}`.toLowerCase().includes(this.searchUserQuery.toLowerCase())
     );
 
-    console.log('Filtered users:', filtered);
     return filtered;
   }
 
@@ -605,12 +614,13 @@ export class Dashboard implements OnInit {
     }
 
     this.chatService.sendMessage(request).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (message) => {
+      next: (response: any) => {
         this.messages.push({
-          ...message,
+          ...response,
           isOwn: true
-        })
+        });
         this.newMessage = '';
+        this.cdr.detectChanges()
       },
       error: (err) => {
         console.error('Error sending message:', err);

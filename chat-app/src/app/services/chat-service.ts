@@ -1,6 +1,6 @@
-import {inject, Injectable, Service} from '@angular/core';
+import {inject, Injectable} from '@angular/core';
 import {HttpClient, HttpParams} from '@angular/common/http';
-import {Observable} from 'rxjs';
+import {Observable, tap} from 'rxjs';
 import {Chat} from '../models/chat';
 import {CreateGroupChatRequest} from '../models/create-group-chat-request';
 import {Message} from '../models/message';
@@ -45,15 +45,12 @@ export class ChatService {
     return this.http.post<void>(`${this.apiUrl}/${chatId}/leave`, {});
   }
 
-  getMessages(chatId: string, page: number = 0, size: number = 50): Observable<Message[]> {
-    const params = new HttpParams()
-      .set('page', page.toString())
-      .set('size', size.toString());
-    return this.http.get<Message[]>(`${this.apiUrl}/${chatId}/messages`, { params });
+  getMessages(chatId: string): Observable<Message[]> {
+    return this.http.get<Message[]>(`${this.apiUrl}/messages/${chatId}`)
   }
 
   sendMessage(request: SendMessageRequest): Observable<Message> {
-    return this.http.post<Message>(`${this.apiUrl}/messages`, request);
+    return this.http.post<Message>(`${this.apiUrl}/messages/send`, request);
   }
 
   markMessagesAsRead(chatId: string): Observable<void> {

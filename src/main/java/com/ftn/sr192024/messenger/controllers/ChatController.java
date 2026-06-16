@@ -1,21 +1,19 @@
 package com.ftn.sr192024.messenger.controllers;
 
 import com.ftn.sr192024.messenger.models.Chat;
+import com.ftn.sr192024.messenger.models.Message;
 import com.ftn.sr192024.messenger.models.dto.GroupChatRequest;
-import com.ftn.sr192024.messenger.repository.ChatRepository;
+import com.ftn.sr192024.messenger.models.dto.SendMessageDto;
 import com.ftn.sr192024.messenger.services.ChatService;
+import com.ftn.sr192024.messenger.services.MessageService;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
-import org.apache.coyote.Response;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -24,12 +22,12 @@ import static com.ftn.sr192024.messenger.security.SecurityUtils.getCurrentUserId
 
 @Controller
 @RequestMapping("/chats")
-@AllArgsConstructor
-@NoArgsConstructor
+@RequiredArgsConstructor
 public class ChatController {
 
-    @Autowired
-    private ChatService chatService;
+    private final ChatService chatService;
+
+    private final MessageService messageService;
 
     @GetMapping("/my-chats")
     public ResponseEntity<List<Chat>> getMyChats() {
@@ -54,5 +52,17 @@ public class ChatController {
                 request.getParticipantIds()
         );
         return ResponseEntity.ok(chat);
+    }
+
+    @PostMapping("/messages/send")
+    public ResponseEntity<Message> sendMessage(@RequestBody SendMessageDto messageDto) {
+        Message message = messageService.sendMessage(messageDto);
+        return ResponseEntity.ok(message);
+    }
+
+    @GetMapping("/messages/{chatId}")
+    public ResponseEntity<List<Message>> getChatMessages(@PathVariable UUID chatId) {
+        List<Message> messages = messageService.findByChatId(chatId);
+        return ResponseEntity.ok(messages);
     }
 }

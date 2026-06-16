@@ -23,7 +23,7 @@ public class Message {
     private UUID id;
 
     @Column(columnDefinition = "TEXT")
-    private String text;
+    private String content;
 
     @CreationTimestamp
     @Column(name = "date_of_sending", nullable = false)
