@@ -90,11 +90,8 @@ export class Dashboard implements OnInit {
     sortOrder: 'asc'
   };
 
-  @ViewChild('messagesContainer') private messagesContainer!: ElementRef;
-
-  private shouldScrollToBottom = false;
-
-  private heartbeatInterval: any = null;
+  private heartbeatInterval: any = null
+  private messagePollingInterval: any = null
 
   constructor() {
     this.profileForm = this.fb.group({
@@ -111,9 +108,13 @@ export class Dashboard implements OnInit {
     })
   }
 
+  unreadCounts: Map<string, number> = new Map();
+
   ngOnInit() {
     this.loadCurrentUser()
     this.startHeartbeat()
+    this.startMessagePolling();
+    this.loadUnreadCounts();
   }
 
   ngOnDestroy() {
@@ -267,10 +268,10 @@ export class Dashboard implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (messages: any[]) => {
-          // Just add the isOwn flag, keep everything else as-is
           this.messages = messages.map(msg => ({
             ...msg,
-            isOwn: msg.sender?.id === this.currentUser?.id
+            isOwn: msg.sender?.id === this.currentUser?.id,
+            dateOfSending: msg.dateOfSending ? new Date(msg.dateOfSending) : null
           }));
           this.isLoadingMessages = false;
           this.cdr.detectChanges();
@@ -599,8 +600,99 @@ export class Dashboard implements OnInit {
     this.loadMessages(chat.id);
     // Mark messages as read
     if (chat.unread > 0) {
-      // TODO: API call to mark messages as read
-      chat.unread = 0;
+      this.markMessagesAsRead(chat.id)
+    }
+  }
+
+  loadUnreadCounts() {
+    this.chatService.getAllUnreadCounts()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (counts: Map<string, number>) => {
+          this.unreadCounts = counts;
+          this.chats = this.chats.map(chat => ({
+            ...chat,
+            unread: this.unreadCounts.get(chat.id) || 0
+          }));
+          this.cdr.detectChanges();
+        },
+        error: (err) => {
+          console.error('Error loading unread counts:', err);
+        }
+      });
+  }
+
+  markMessagesAsRead(chatId: string) {
+    this.chatService.markMessagesAsRead(chatId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          // Update unread count locally
+          this.unreadCounts.set(chatId, 0);
+          const chat = this.chats.find(c => c.id === chatId);
+          if (chat) {
+            chat.unread = 0;
+          }
+          this.cdr.detectChanges();
+        },
+        error: (err) => {
+          console.error('Error marking messages as read:', err);
+        }
+      });
+  }
+
+  private checkForNewMessages(chatId: string) {
+    if (!this.selectedChat || this.selectedChat.id !== chatId) {
+      return;
+    }
+
+    this.chatService.getMessages(chatId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (messages: any[]) => {
+          // Check for new messages from other users
+          if (messages.length > this.messages.length) {
+            const newMessages = messages.slice(this.messages.length);
+            let hasNewMessage = false;
+
+            newMessages.forEach((msg: any) => {
+              const exists = this.messages.some(m => m.id === msg.id);
+              if (!exists) {
+                this.messages.push({
+                  ...msg,
+                  isOwn: msg.sender?.id === this.currentUser?.id,
+                  content: msg.content || '',
+                  dateOfSending: msg.dateOfSending ? new Date(msg.dateOfSending) : null
+                });
+                hasNewMessage = true;
+              }
+            });
+
+            if (hasNewMessage) {
+              this.cdr.detectChanges();
+              if (this.selectedChat) {
+                this.markMessagesAsRead(this.selectedChat.id);
+              }
+            }
+          }
+        },
+        error: (err) => console.error('Error polling messages:', err)
+      });
+  }
+
+  private startMessagePolling() {
+    // This runs every 3 seconds
+    this.messagePollingInterval = setInterval(() => {
+      if (this.selectedChat) {
+        this.checkForNewMessages(this.selectedChat.id);
+      }
+    }, 3000); // 3 seconds interval
+  }
+
+  private stopMessagePolling() {
+    if (this.messagePollingInterval) {
+      clearInterval(this.messagePollingInterval);
+      this.messagePollingInterval = null;
     }
   }
 

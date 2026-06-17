@@ -5,10 +5,12 @@ import com.ftn.sr192024.messenger.models.User;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -16,7 +18,7 @@ import java.util.UUID;
 
 @Repository
 public interface ChatRepository extends JpaRepository<Chat, UUID> {
-    @Query("SELECT c FROM Chat c JOIN c.participants p WHERE p.id = :userId")
+    @Query("SELECT c FROM Chat c JOIN c.participants p WHERE p.id = :userId ORDER BY c.lastMessageAt desc")
     Optional<List<Chat>> findAllChatsByUserId(@Param("userId") UUID userId);
     @Query(value = "SELECT c.* FROM chat c " +
             "WHERE c.group_chat = false " +
@@ -25,4 +27,11 @@ public interface ChatRepository extends JpaRepository<Chat, UUID> {
             "AND (SELECT COUNT(*) FROM chat_participants cp3 WHERE cp3.chat_id = c.id) = 2",
             nativeQuery = true)
     Optional<Chat> findDirectChatBetweenUsers(@Param("userId1") UUID userId1, @Param("userId2") UUID userId2);
+
+    List<Chat> findByParticipantsId(UUID userId);
+
+    @Modifying
+    @Query("UPDATE Chat c SET c.lastMessageAt = :lastMessageAt WHERE c.id = :chatId")
+    void updateLastMessageAt(@Param("chatId") UUID chatId,
+                             @Param("lastMessageAt") LocalDateTime lastMessageAt);
 }

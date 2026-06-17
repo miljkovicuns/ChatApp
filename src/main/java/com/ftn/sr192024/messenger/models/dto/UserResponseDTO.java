@@ -1,10 +1,17 @@
 package com.ftn.sr192024.messenger.models.dto;
 
+import com.ftn.sr192024.messenger.models.User;
 import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
+
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 
 @Data
+@Getter
+@Setter
 public class UserResponseDTO {
     private UUID id;
     private String username;
@@ -48,5 +55,31 @@ public class UserResponseDTO {
         } else {
             return String.format("Last seen %s", lastSeen.toLocalDate().toString());
         }
+    }
+
+    private static final DateTimeFormatter FORMATTER =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    // ✅ The fromEntity method for User
+    public static UserResponseDTO fromEntity(User user) {
+        if (user == null) return null;
+
+        UserResponseDTO dto = new UserResponseDTO();
+        dto.setId(user.getId());
+        dto.setUsername(user.getUsername());
+        dto.setFirstName(user.getFirstName());
+        dto.setLastName(user.getLastName());
+        dto.setEmail(user.getEmail());
+        dto.setPhoneNumber(user.getPhoneNumber());
+        dto.setImage(user.getImage());
+
+        // Calculate online status (online if last seen within 5 minutes)
+        if (user.getLastOnline() != null) {
+            dto.setOnline(user.getLastOnline()
+                    .isAfter(LocalDateTime.now().minusMinutes(5)));
+            dto.setLastSeen(user.getLastOnline());
+        }
+
+        return dto;
     }
 }

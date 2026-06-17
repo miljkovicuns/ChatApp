@@ -55,35 +55,25 @@
         </button>
       </div>
 
+      <!-- dashboard.html - Chat list with unread badge -->
       <div class="chat-list">
-        <!-- Chat items will be populated here -->
         @for (chat of chats; track chat.id) {
           <div class="chat-item" (click)="selectChat(chat)">
             <div class="chat-avatar">
-              @if (getOtherParticipant(chat) && getUserAvatar(getOtherParticipant(chat))) {
-                <img [src]="getUserAvatar(getOtherParticipant(chat))"
-                     [alt]="getChatDisplayName(chat)"
-                     class="avatar-image">
-              }
-              @if (isImageAvatar(getChatAvatar(chat))) {
-                <img [src]="getChatAvatar(chat)"
-                     [alt]="getChatDisplayName(chat)"
-                     class="avatar-image">
-              }
-              @if (!isImageAvatar(getChatAvatar(chat)) && !getUserAvatar(getOtherParticipant(chat))) {
-                <span>
-                  {{ getChatAvatar(chat) }}
-                </span>
+              <!-- ... avatar code ... -->
+              @if (chat.unread > 0) {
+                <span class="unread-badge">{{ chat.unread }}</span>
               }
             </div>
             <div class="chat-info">
-              <div class="chat-name">{{ getOtherParticipant(chat)?.username }}</div>
-              <div class="last-message">{{ chat.lastMessageAt }}</div>
+              <div class="chat-name">{{ getChatDisplayName(chat) }}</div>
+              <div class="last-message">
+                {{ chat.lastMessageAt | date:'medium' }}
+              </div>
             </div>
           </div>
         }
       </div>
-    </div>
 
     <!-- Chat Area -->
     <div class="chat-area">
@@ -114,7 +104,11 @@
           <div class="message" [class.own-message]="message.isOwn">
             <div class="message-content">
               <div class="message-text">{{ message.content }}</div>
-              <div class="message-time">{{ message.dateOfSending | date:'short' }}</div>
+              @if (message.isOwn) {
+                <div class="message-time">{{ message.dateOfSending | date:'short' }}</div>
+              } @else {
+                <div class="message-time" style="color: #000000">{{ message.dateOfSending | date:'short' }}</div>
+              }
             </div>
           </div>
         }

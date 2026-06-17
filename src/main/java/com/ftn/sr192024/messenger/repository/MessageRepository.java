@@ -10,5 +10,5 @@ import java.util.UUID;
 
 @Repository
 public interface MessageRepository extends JpaRepository<Message, UUID> {
-    Optional<List<Message>> findByChatId(UUID chat_id);
+    Optional<List<Message>> findByChatIdOrderByDateOfSendingAsc(UUID chat_id);
 }

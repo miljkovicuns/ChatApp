@@ -8,5 +8,5 @@ export interface Chat {
   description?: string;
   dateCreated: Date;
   lastMessageAt?: Date;
-
+  unread: number
 }

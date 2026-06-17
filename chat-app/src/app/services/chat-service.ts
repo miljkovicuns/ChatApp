@@ -54,11 +54,11 @@ export class ChatService {
   }
 
   markMessagesAsRead(chatId: string): Observable<void> {
-    return this.http.post<void>(`${this.apiUrl}/${chatId}/mark-read`, {});
+    return this.http.post<void>(`${this.apiUrl}/mark-read/${chatId}`, {});
   }
 
   getUnreadCount(chatId: string): Observable<number> {
-    return this.http.get<number>(`${this.apiUrl}/${chatId}/unread-count`);
+    return this.http.get<number>(`${this.apiUrl}/unread-count/${chatId}`);
   }
 
   deleteMessage(messageId: string): Observable<void> {
@@ -68,5 +68,9 @@ export class ChatService {
   searchChats(query: string): Observable<Chat[]> {
     const params = new HttpParams().set('query', query);
     return this.http.get<Chat[]>(`${this.apiUrl}/search`, { params });
+  }
+
+  getAllUnreadCounts(): Observable<Map<string, number>> {
+    return this.http.get<Map<string, number>>(`${this.apiUrl}/unread-counts`);
   }
 }

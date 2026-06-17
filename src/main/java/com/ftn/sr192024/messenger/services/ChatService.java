@@ -2,29 +2,31 @@ package com.ftn.sr192024.messenger.services;
 
 import com.ftn.sr192024.messenger.models.Chat;
 import com.ftn.sr192024.messenger.models.User;
+import com.ftn.sr192024.messenger.models.dto.ChatResponseDto;
 import com.ftn.sr192024.messenger.repository.ChatRepository;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class ChatService {
 
     private final ChatRepository chatRepository;
-
     private final UserService userService;
 
-    public List<Chat> getUsersChat(UUID id) {
-
-        return chatRepository.findAllChatsByUserId(id).orElseThrow(() -> new RuntimeException("User not found"));
+    public List<Chat> getUsersChat(UUID userId) {
+        return chatRepository.findAllChatsByUserId(userId).orElse(null);
     }
 
     public Chat createDirectChat(List<UUID> participantIds){
@@ -73,5 +75,9 @@ public class ChatService {
 
     public Chat findById(UUID chatId) {
         return chatRepository.findById(chatId).orElse(null);
+    }
+
+    public void save(Chat chat) {
+        chatRepository.save(chat);
     }
 }

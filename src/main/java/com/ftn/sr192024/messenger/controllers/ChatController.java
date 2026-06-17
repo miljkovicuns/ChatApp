@@ -2,6 +2,7 @@ package com.ftn.sr192024.messenger.controllers;
 
 import com.ftn.sr192024.messenger.models.Chat;
 import com.ftn.sr192024.messenger.models.Message;
+import com.ftn.sr192024.messenger.models.dto.ChatResponseDto;
 import com.ftn.sr192024.messenger.models.dto.GroupChatRequest;
 import com.ftn.sr192024.messenger.models.dto.SendMessageDto;
 import com.ftn.sr192024.messenger.services.ChatService;
@@ -32,7 +33,6 @@ public class ChatController {
     @GetMapping("/my-chats")
     public ResponseEntity<List<Chat>> getMyChats() {
         UUID id = getCurrentUserId();
-
         List<Chat> myChats = chatService.getUsersChat(id);
         return ResponseEntity.ok(myChats);
     }
@@ -64,5 +64,26 @@ public class ChatController {
     public ResponseEntity<List<Message>> getChatMessages(@PathVariable UUID chatId) {
         List<Message> messages = messageService.findByChatId(chatId);
         return ResponseEntity.ok(messages);
+    }
+
+    @PostMapping("/mark-read/{chatId}")
+    public ResponseEntity<?> markMessagesAsRead(@PathVariable UUID chatId) {
+        UUID userId = getCurrentUserId();
+        messageService.markMessagesAsRead(chatId, userId);
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/unread-count/{chatId}")
+    public ResponseEntity<Long> getUnreadCount(@PathVariable UUID chatId) {
+        UUID userId = getCurrentUserId();
+        long count = messageService.getUnreadCountForChat(chatId, userId);
+        return ResponseEntity.ok(count);
+    }
+
+    @GetMapping("/unread-counts")
+    public ResponseEntity<Map<UUID, Long>> getAllUnreadCounts() {
+        UUID userId = getCurrentUserId();
+        Map<UUID, Long> unreadCounts = messageService.getUnreadCountsForUser(userId);
+        return ResponseEntity.ok(unreadCounts);
     }
 }

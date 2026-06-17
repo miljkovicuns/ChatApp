@@ -1,5 +1,6 @@
 package com.ftn.sr192024.messenger.models;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -9,6 +10,8 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @AllArgsConstructor
@@ -63,6 +66,10 @@ public class User {
 
     @Column(name = "role")
     private RoleEnum role;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
+    @JsonIgnore
+    private List<MessageReadStatus> readStatuses = new ArrayList<>();
 
     @PreUpdate
     @PrePersist

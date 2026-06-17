@@ -1,5 +1,6 @@
 package com.ftn.sr192024.messenger.models;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -8,6 +9,7 @@ import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -47,4 +49,15 @@ public class Message {
     @ManyToOne(optional = false)
     @JoinColumn(name = "chat_id")
     private Chat chat;
+
+    @OneToMany(mappedBy = "message", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
+    private List<MessageReadStatus> readStatuses = new ArrayList<>();
+
+    // Helper method to check if a user has read this message
+    @Transient
+    public boolean isReadByUser(UUID userId) {
+        return readStatuses.stream()
+                .anyMatch(status -> status.getUser().getId().equals(userId));
+    }
 }
