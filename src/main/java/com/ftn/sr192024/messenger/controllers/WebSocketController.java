@@ -1,10 +1,14 @@
 package com.ftn.sr192024.messenger.controllers;
 
 import com.ftn.sr192024.messenger.models.Message;
+import com.ftn.sr192024.messenger.models.dto.MessageResponseDto;
 import com.ftn.sr192024.messenger.models.dto.SendMessageDto;
 import com.ftn.sr192024.messenger.services.MessageService;
 import com.ftn.sr192024.messenger.services.UserService;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -61,5 +65,40 @@ public class WebSocketController {
                 "/topic/chat/" + request.getChatId() + "/unread",
                 new UnreadUpdateResponse(request.getChatId(), userId, unreadCount)
         );
+    }
+
+    @Getter
+    @Setter
+    class MarkReadRequest {
+        private UUID chatId;
+        // getters and setters
+    }
+
+    @Getter
+    @Setter
+    class TypingRequest {
+        private UUID chatId;
+        private boolean typing;
+        // getters and setters
+    }
+
+    @Getter
+    @Setter
+    @AllArgsConstructor
+    class UnreadUpdateResponse {
+        private UUID chatId;
+        private UUID userId;
+        private long unreadCount;
+        // constructor, getters and setters
+    }
+
+    @Getter
+    @Setter
+    @AllArgsConstructor
+    class TypingResponse {
+        private UUID userId;
+        private UUID chatId;
+        private boolean typing;
+        // constructor, getters and setters
     }
 }

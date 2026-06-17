@@ -23,10 +23,8 @@ import java.util.UUID;
 public class MessageService {
     private final MessageRepository messageRepository;
     private final MessageReadStatusRepository readStatusRepository;
-    @Lazy
-    private final ChatService chatService;
     private final UserService userService;
-    private final ChatUpdateService chatUpdateService;
+    private final ChatUpdateService chatUpdateService; // Only dependency needed
 
     public List<Message> findByChatId(UUID chatID) {
         return messageRepository.findByChatIdOrderByDateOfSendingAsc(chatID).orElse(null);
@@ -38,11 +36,15 @@ public class MessageService {
             throw new IllegalArgumentException("Message content cannot be null or empty");
         }
 
+        // ✅ Update chat's last message time
+        chatUpdateService.updateLastMessageAt(
+                sendMessageDto.getChatId(),
+                LocalDateTime.now()
+        );
+
+        // ✅ Create and save message
         Message message = new Message();
-        Chat chat = chatService.findById(sendMessageDto.getChatId());
-
-        chatUpdateService.updateLastMessageAt(chat.getId(), LocalDateTime.now());
-
+        Chat chat = chatUpdateService.findChatById(sendMessageDto.getChatId());
         message.setChat(chat);
         message.setSender(userService.findById(sendMessageDto.getSenderId()));
         message.setContent(sendMessageDto.getContent().trim());
@@ -50,7 +52,7 @@ public class MessageService {
 
         Message saved = messageRepository.save(message);
 
-        // Mark message as read by sender
+        // ✅ Mark as read by sender
         User sender = userService.findById(sendMessageDto.getSenderId());
         MessageReadStatus senderReadStatus = new MessageReadStatus(saved, sender);
         readStatusRepository.save(senderReadStatus);
@@ -78,18 +80,5 @@ public class MessageService {
         }
 
         return unreadCounts;
-    }
-
-    @Transactional
-    public void markMessageAsRead(UUID messageId, UUID userId) {
-        Message message = messageRepository.findById(messageId)
-                .orElseThrow(() -> new RuntimeException("Message not found"));
-        User user = userService.findById(userId);
-
-        // Check if already marked as read
-        if (!readStatusRepository.existsByMessageIdAndUserId(messageId, userId)) {
-            MessageReadStatus readStatus = new MessageReadStatus(message, user);
-            readStatusRepository.save(readStatus);
-        }
     }
 }

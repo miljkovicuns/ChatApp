@@ -1,4 +1,4 @@
-<div class="dashboard-container">
+<div class="dashboard-container" xmlns="http://www.w3.org/1999/html">
   <!-- Top Bar -->
   <div class="top-bar">
     <div class="logo-section">
@@ -58,10 +58,23 @@
       <!-- dashboard.html - Chat list with unread badge -->
       <div class="chat-list">
         @for (chat of chats; track chat.id) {
-          <div class="chat-item" (click)="selectChat(chat)">
+          <div class="chat-item" (click)="selectChat(chat)" [class.active]="selectedChat?.id === chat.id">
             <div class="chat-avatar">
-              <!-- ... avatar code ... -->
-              @if (chat.unread > 0) {
+              <!-- Avatar content -->
+              <div class="avatar-content">
+                @if (chat.groupChat) {
+                  <span>{{ getChatAvatar(chat) }}</span>
+                } @else {
+                  @if (getUserAvatar(getOtherParticipant(chat))) {
+                    <img [src]="getUserAvatar(getOtherParticipant(chat))"
+                         class="avatar-image-small">
+                  } @else {
+                    <span>{{ getChatDisplayName(chat).charAt(0) | uppercase }}</span>
+                  }
+                }
+              </div>
+              <!-- Unread badge -->
+              @if (chat.unread && chat.unread > 0) {
                 <span class="unread-badge">{{ chat.unread }}</span>
               }
             </div>
@@ -74,6 +87,7 @@
           </div>
         }
       </div>
+    </div>
 
     <!-- Chat Area -->
     <div class="chat-area">
@@ -125,15 +139,21 @@
       </ng-template>
 
       <div class="message-input-area" *ngIf="selectedChat">
-        <input
-          type="text"
-          placeholder="Type a message..."
-          [(ngModel)]="newMessage"
-          [ngModelOptions]="{standalone: true}"
-        />
-        <button class="send-btn" (click)="sendMessage()">
-          📤 Send
-        </button>
+        <div class="typing-indicator" *ngIf="showTypingIndicator">
+          Someone is typing...
+        </div>
+        <div class="input-group">
+          <input
+            type="text"
+            placeholder="Type a message..."
+            [(ngModel)]="newMessage"
+            (keyup.enter)="sendMessage()"
+            (keyup)="onTyping()"
+          />
+          <button class="send-btn" (click)="sendMessage()" [disabled]="!newMessage.trim()">
+            Send
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -420,7 +440,7 @@
             </div>
             <div class="user-info">
               <div class="user-name">{{ user.firstName }} {{ user.lastName }}</div>
-              <div class="user-username">@{{ user.username }}</div>
+              <div class="user-username">{{ user.username }}</div>
               <div class="user-last-seen">{{ user.formattedLastSeen }}</div>
             </div>
             <div class="selection-check" *ngIf="isParticipantSelected(user)">✓</div>

@@ -33,7 +33,7 @@ public class ChatController {
     @GetMapping("/my-chats")
     public ResponseEntity<List<Chat>> getMyChats() {
         UUID id = getCurrentUserId();
-        List<Chat> myChats = chatService.getUsersChat(id);
+        List<Chat> myChats = chatService.getUsersChats(id);
         return ResponseEntity.ok(myChats);
     }
 

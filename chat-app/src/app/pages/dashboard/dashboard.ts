@@ -1,4 +1,13 @@
-import {ChangeDetectorRef, Component, DestroyRef, ElementRef, inject, OnInit, ViewChild} from '@angular/core';
+import {
+  ChangeDetectorRef,
+  Component,
+  DestroyRef,
+  ElementRef,
+  inject,
+  OnDestroy,
+  OnInit,
+  ViewChild
+} from '@angular/core';
 import {CommonModule, NgOptimizedImage} from '@angular/common';
 import {Auth} from '../../services/auth';
 import {FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators} from '@angular/forms';
@@ -13,6 +22,7 @@ import {SendMessageRequest} from '../../models/send-message-request';
 import {Observable} from 'rxjs';
 import {DomSanitizer, SafeUrl} from '@angular/platform-browser';
 import {UserFilterParams} from '../../models/user-filter-params';
+import {WebSocketService} from '../../services/web-socket-service';
 
 @Component({
   selector: 'app-dashboard',
@@ -21,7 +31,7 @@ import {UserFilterParams} from '../../models/user-filter-params';
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css'
 })
-export class Dashboard implements OnInit {
+export class Dashboard implements OnInit,OnDestroy {
   private authService = inject(Auth);
   private chatService = inject(ChatService)
   private userService = inject(UserService)
@@ -29,6 +39,7 @@ export class Dashboard implements OnInit {
   private destroyRef = inject(DestroyRef)
   private cdr = inject(ChangeDetectorRef)
   private sanitizer = inject(DomSanitizer)
+  private webSocketService = inject(WebSocketService)
 
   currentUser: any = null;
   showProfileModal = false;
@@ -99,7 +110,7 @@ export class Dashboard implements OnInit {
       email: ['', [Validators.required, Validators.email]],
       firstName: [''],
       lastName: [''],
-      phoneNumber: ['']
+      phoneNumber: [''],
     });
 
     this.groupChatForm = this.fb.group({
@@ -110,15 +121,37 @@ export class Dashboard implements OnInit {
 
   unreadCounts: Map<string, number> = new Map();
 
+  showTypingIndicator = false;
+  typingUserId: string | null = null;
+  private typingTimeout: any = null;
+
   ngOnInit() {
     this.loadCurrentUser()
     this.startHeartbeat()
-    this.startMessagePolling();
+
+    this.webSocketService.connect();
+
+    // Subscribe to WebSocket events
+    this.webSocketService.onMessage().subscribe((message: any) => {
+      this.handleNewMessage(message);
+    });
+
+    this.webSocketService.onUnreadUpdate().subscribe((update: any) => {
+      this.handleUnreadUpdate(update);
+    });
+
+    this.webSocketService.onTyping().subscribe((typing: any) => {
+      this.handleTyping(typing);
+    });
+
+    // Load initial unread counts
     this.loadUnreadCounts();
   }
 
   ngOnDestroy() {
     this.stopHeartbeat()
+    this.webSocketService.unsubscribeFromChat();
+    this.webSocketService.disconnect();
   }
 
   startHeartbeat() {
@@ -182,6 +215,13 @@ export class Dashboard implements OnInit {
         }
       });
     }
+  }
+
+  selectChatType(type: 'direct' | 'group') {
+    this.selectedChatType = type;
+    this.createChatStep = 'participants';
+    this.selectedParticipants = [];
+    this.createChatError = null;
   }
 
   getImageUrl(imageString: string | null | undefined): SafeUrl | string {
@@ -381,11 +421,21 @@ export class Dashboard implements OnInit {
     this.createChatError = null;
   }
 
-  selectChatType(type: 'direct' | 'group') {
-    this.selectedChatType = type;
-    this.createChatStep = 'participants';
-    this.selectedParticipants = [];
-    this.createChatError = null;
+  selectChat(chat: Chat) {
+    // ✅ Add null check
+    if (!chat || !chat.id) {
+      console.warn('Invalid chat selected:', chat);
+      return;
+    }
+
+    this.webSocketService.unsubscribeFromChat();
+    this.selectedChat = chat;
+    this.webSocketService.subscribeToChat(chat.id);
+    this.loadMessages(chat.id);
+
+    if (chat.unread && chat.unread > 0) {
+      this.markMessagesAsRead(chat.id);
+    }
   }
 
   toggleParticipantSelection(user: User) {
@@ -595,15 +645,6 @@ export class Dashboard implements OnInit {
     }, 1000);
   }
 
-  selectChat(chat: any) {
-    this.selectedChat = chat;
-    this.loadMessages(chat.id);
-    // Mark messages as read
-    if (chat.unread > 0) {
-      this.markMessagesAsRead(chat.id)
-    }
-  }
-
   loadUnreadCounts() {
     this.chatService.getAllUnreadCounts()
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -618,25 +659,6 @@ export class Dashboard implements OnInit {
         },
         error: (err) => {
           console.error('Error loading unread counts:', err);
-        }
-      });
-  }
-
-  markMessagesAsRead(chatId: string) {
-    this.chatService.markMessagesAsRead(chatId)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: () => {
-          // Update unread count locally
-          this.unreadCounts.set(chatId, 0);
-          const chat = this.chats.find(c => c.id === chatId);
-          if (chat) {
-            chat.unread = 0;
-          }
-          this.cdr.detectChanges();
-        },
-        error: (err) => {
-          console.error('Error marking messages as read:', err);
         }
       });
   }
@@ -697,27 +719,141 @@ export class Dashboard implements OnInit {
   }
 
   sendMessage() {
-    if (!this.newMessage.trim() || !this.selectedChat) return
-
-    const request: SendMessageRequest = {
-      content: this.newMessage,
-      chatId: this.selectedChat.id,
-      senderId: this.currentUser.id
+    if (!this.newMessage?.trim() || !this.selectedChat?.id || !this.currentUser?.id) {
+      return;
     }
 
-    this.chatService.sendMessage(request).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (response: any) => {
+    this.webSocketService.sendMessage(
+      this.selectedChat.id,
+      this.newMessage,
+      this.currentUser.id
+    );
+
+    const tempMessage = {
+      id: 'temp-' + Date.now(),
+      content: this.newMessage,
+      dateOfSending: new Date(),
+      isOwn: true,
+      senderId: this.currentUser.id,
+      chatId: this.selectedChat.id
+    };
+    this.messages.push(tempMessage);
+    this.newMessage = '';
+    this.cdr.detectChanges();
+  }
+
+  onTyping() {
+    if (this.selectedChat) {
+      this.webSocketService.sendTyping(this.selectedChat.id, true);
+
+      clearTimeout(this.typingTimeout);
+      this.typingTimeout = setTimeout(() => {
+        if(this.selectedChat==null){
+          return
+        }
+        this.webSocketService.sendTyping(this.selectedChat.id, false);
+      }, 3000);
+    }
+  }
+
+  private handleNewMessage(message: any) {
+    if (!message || !message.chatId) {
+      console.warn('Invalid message received:', message);
+      return;
+    }
+
+    console.log('New message received:', message);
+
+    // If this is the selected chat, add to messages
+    if (this.selectedChat && message.chatId === this.selectedChat.id) {
+      const exists = this.messages.some(m => m.id === message.id);
+      if (!exists) {
         this.messages.push({
-          ...response,
-          isOwn: true
+          ...message,
+          isOwn: message.senderId === this.currentUser?.id,
+          dateOfSending: new Date(message.dateOfSending)
         });
-        this.newMessage = '';
-        this.cdr.detectChanges()
-      },
-      error: (err) => {
-        console.error('Error sending message:', err);
+        this.cdr.detectChanges();
+
+        // Mark as read immediately
+        if (message.senderId !== this.currentUser?.id) {
+          this.webSocketService.markAsRead(this.selectedChat.id);
+        }
       }
-    });
+    }
+
+    // Update unread count for the chat
+    const chat = this.chats.find(c => c.id === message.chatId);
+    if (chat && message.senderId !== this.currentUser?.id) {
+      // If this is not the selected chat, increment unread
+      if (chat.id !== this.selectedChat?.id) {
+        chat.unread = (chat.unread || 0) + 1;
+      } else {
+        // If it's the selected chat, unread should be 0
+        chat.unread = 0;
+      }
+      this.cdr.detectChanges();
+    }
+  }
+
+  private handleUnreadUpdate(update: any) {
+    if (!update || !update.chatId) {
+      console.warn('Invalid unread update received:', update);
+      return;
+    }
+
+    console.log('Unread update received:', update);
+
+    const chat = this.chats.find(c => c.id === update.chatId);
+    if (chat) {
+      chat.unread = update.unreadCount || 0;
+      this.cdr.detectChanges();
+    }
+    this.unreadCounts.set(update.chatId, update.unreadCount || 0);
+  }
+
+  markMessagesAsRead(chatId: string) {
+    // Send WebSocket message to mark as read
+    this.webSocketService.markAsRead(chatId);
+
+    // Also call the REST API for persistence
+    this.chatService.markMessagesAsRead(chatId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          // Update unread count locally
+          this.unreadCounts.set(chatId, 0);
+          const chat = this.chats.find(c => c.id === chatId);
+          if (chat) {
+            chat.unread = 0;
+          }
+          this.cdr.detectChanges();
+        },
+        error: (err) => {
+          console.error('Error marking messages as read:', err);
+        }
+      });
+  }
+
+  private updateUnreadCount(update: any) {
+    const chat = this.chats.find(c => c.id === update.chatId);
+    if (chat) {
+      chat.unread = update.unreadCount;
+      this.cdr.detectChanges();
+    }
+  }
+
+  private handleTyping(typing: any) {
+    // ✅ Add null/undefined check
+    if (!typing || !typing.chatId) {
+      return;
+    }
+
+    if (this.selectedChat && typing.chatId === this.selectedChat.id) {
+      this.showTypingIndicator = typing.typing || false;
+      this.typingUserId = typing.userId || null;
+      this.cdr.detectChanges();
+    }
   }
 
   saveSettings() {

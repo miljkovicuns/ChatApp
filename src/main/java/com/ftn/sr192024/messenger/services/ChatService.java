@@ -25,8 +25,8 @@ public class ChatService {
     private final ChatRepository chatRepository;
     private final UserService userService;
 
-    public List<Chat> getUsersChat(UUID userId) {
-        return chatRepository.findAllChatsByUserId(userId).orElse(null);
+    public List<Chat> getUsersChats(UUID userId) {
+        return chatRepository.findByParticipantsId(userId);
     }
 
     public Chat createDirectChat(List<UUID> participantIds){
@@ -39,9 +39,12 @@ public class ChatService {
             throw new RuntimeException("One or more users not found");
         }
 
-        Chat existingChat = chatRepository.findDirectChatBetweenUsers(users.get(0).getId(),users.get(1).getId()).orElse(null);
+        Chat existingChat = chatRepository.findDirectChatBetweenUsers(
+                users.get(0).getId(),
+                users.get(1).getId()
+        ).orElse(null);
 
-        if(existingChat!=null){
+        if(existingChat != null){
             return existingChat;
         }
 
@@ -54,7 +57,7 @@ public class ChatService {
     }
 
     public Chat createGroupChat(String name, String description, List<UUID> participantIds){
-        if(name==null || name.trim().isEmpty()){
+        if(name == null || name.trim().isEmpty()){
             throw new RuntimeException("Group Name Is Required");
         }
 
@@ -70,7 +73,7 @@ public class ChatService {
         chat.setParticipants(participants);
         chat.setDateCreated(LocalDateTime.now());
 
-        return chat;
+        return chatRepository.save(chat);
     }
 
     public Chat findById(UUID chatId) {
