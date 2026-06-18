@@ -91,6 +91,7 @@
 
     <!-- Chat Area -->
     <div class="chat-area">
+      <app
       <div class="chat-header" *ngIf="selectedChat">
         <div class="chat-header-info">
           <div class="chat-avatar-large">
@@ -139,9 +140,6 @@
       </ng-template>
 
       <div class="message-input-area" *ngIf="selectedChat">
-        <div class="typing-indicator" *ngIf="showTypingIndicator">
-          Someone is typing...
-        </div>
         <div class="input-group">
           <input
             type="text"
@@ -153,6 +151,9 @@
           <button class="send-btn" (click)="sendMessage()" [disabled]="!newMessage.trim()">
             Send
           </button>
+        </div>
+        <div class="typing-indicator" *ngIf="showTypingIndicator">
+          Someone is typing...
         </div>
       </div>
     </div>

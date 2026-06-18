@@ -41,6 +41,7 @@ export class Dashboard implements OnInit,OnDestroy {
   private sanitizer = inject(DomSanitizer)
   private webSocketService = inject(WebSocketService)
 
+  //Profile related properties
   currentUser: any = null;
   showProfileModal = false;
   showSettingsModal = false;
@@ -56,6 +57,7 @@ export class Dashboard implements OnInit,OnDestroy {
   isLoadingMessages = false;
   isLoadingUsers = false
 
+  //Chat creation properties
   createChatStep: 'type' | 'participants' | 'group-details' = 'type';
   selectedChatType: 'direct' | 'group' = 'direct';
   availableUsers: User[] = [];
@@ -143,9 +145,6 @@ export class Dashboard implements OnInit,OnDestroy {
     this.webSocketService.onTyping().subscribe((typing: any) => {
       this.handleTyping(typing);
     });
-
-    // Load initial unread counts
-    this.loadUnreadCounts();
   }
 
   ngOnDestroy() {
@@ -179,7 +178,7 @@ export class Dashboard implements OnInit,OnDestroy {
 
   loadCurrentUser() {
     this.currentUser = this.authService.getUser()
-
+    console.log("current user")
     if (this.currentUser) {
       this.profileForm.patchValue({
         username: this.currentUser.username || '',
@@ -204,6 +203,7 @@ export class Dashboard implements OnInit,OnDestroy {
             lastName: user.lastName || '',
             phoneNumber: user.phoneNumber || ''
           });
+
           this.loadChats()
           this.loadAvailableUsers()
         },
@@ -294,6 +294,8 @@ export class Dashboard implements OnInit,OnDestroy {
           this.chats = chats
           this.isLoadingChats = false
           this.cdr.detectChanges()
+          console.log("finished loading chats")
+          this.loadUnreadCounts()
         },
         error: (err) => {
           console.error('Error loading chats:', err)
@@ -432,7 +434,12 @@ export class Dashboard implements OnInit,OnDestroy {
     this.selectedChat = chat;
     this.webSocketService.subscribeToChat(chat.id);
     this.loadMessages(chat.id);
-
+    // @ts-ignore
+    const unread = this.unreadCounts[chat.id]
+    if(unread) {
+      chat.unread = unread
+    }
+    console.log(unread)
     if (chat.unread && chat.unread > 0) {
       this.markMessagesAsRead(chat.id);
     }
@@ -646,15 +653,32 @@ export class Dashboard implements OnInit,OnDestroy {
   }
 
   loadUnreadCounts() {
+    console.log('🔄 loadUnreadCounts called');
+    console.log('📊 Current chats:', this.chats);
+    console.log('📊 Chat IDs:', this.chats.map(c => c.id));
     this.chatService.getAllUnreadCounts()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (counts: Map<string, number>) => {
-          this.unreadCounts = counts;
+          let countsMap = new Map<string, number>
+          Object.entries(counts).forEach(([key, value]) => {
+            countsMap.set(key, Number(value) || 0);
+          });
+          this.unreadCounts = countsMap;
+
+          this.chats.forEach(chat => {
+            const hasCount = this.unreadCounts.has(chat.id);
+            const count = this.unreadCounts.get(chat.id) || 0;
+            console.log(`Chat ${chat.id} (${chat.name}): hasCount=${hasCount}, count=${count}`);
+          });
+
+          // ✅ Update chats with unread counts
           this.chats = this.chats.map(chat => ({
             ...chat,
             unread: this.unreadCounts.get(chat.id) || 0
           }));
+
+          console.log('✅ Updated chats:', this.chats);
           this.cdr.detectChanges();
         },
         error: (err) => {
@@ -728,16 +752,6 @@ export class Dashboard implements OnInit,OnDestroy {
       this.newMessage,
       this.currentUser.id
     );
-
-    const tempMessage = {
-      id: 'temp-' + Date.now(),
-      content: this.newMessage,
-      dateOfSending: new Date(),
-      isOwn: true,
-      senderId: this.currentUser.id,
-      chatId: this.selectedChat.id
-    };
-    this.messages.push(tempMessage);
     this.newMessage = '';
     this.cdr.detectChanges();
   }
@@ -809,7 +823,7 @@ export class Dashboard implements OnInit,OnDestroy {
       chat.unread = update.unreadCount || 0;
       this.cdr.detectChanges();
     }
-    this.unreadCounts.set(update.chatId, update.unreadCount || 0);
+    this.unreadCounts.set(update.chatId, update.unreadCount);
   }
 
   markMessagesAsRead(chatId: string) {

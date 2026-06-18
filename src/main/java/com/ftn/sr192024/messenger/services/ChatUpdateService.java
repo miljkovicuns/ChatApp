@@ -20,6 +20,8 @@ public class ChatUpdateService {
         chatRepository.save(chat);
     }
 
+
+
     public Chat findChatById(UUID chatId) {
         return chatRepository.findById(chatId).orElse(null);
     }

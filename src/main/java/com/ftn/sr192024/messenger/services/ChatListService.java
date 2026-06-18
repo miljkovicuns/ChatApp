@@ -18,11 +18,11 @@ public class ChatListService {
 
     public List<ChatResponseDto> getUsersChatsWithUnread(UUID userId) {
         List<Chat> chats = chatService.getUsersChats(userId);
-        Map<UUID, Long> unreadCounts = messageService.getUnreadCountsForUser(userId);
+        Map<UUID, Integer> unreadCounts = messageService.getUnreadCountsForUser(userId);
 
         return chats.stream()
                 .map(chat -> {
-                    Long count = unreadCounts.getOrDefault(chat.getId(), 0L);
+                    Integer count = unreadCounts.getOrDefault(chat.getId(), 0);
                     return ChatResponseDto.fromEntity(chat, count);
                 })
                 .collect(Collectors.toList());

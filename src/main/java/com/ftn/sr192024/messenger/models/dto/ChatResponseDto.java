@@ -3,7 +3,6 @@ package com.ftn.sr192024.messenger.models.dto;
 import com.ftn.sr192024.messenger.models.Chat;
 import lombok.Getter;
 import lombok.Setter;
-import org.springframework.format.annotation.DateTimeFormat;
 
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -53,7 +52,7 @@ public class ChatResponseDto {
         return dto;
     }
 
-    public static ChatResponseDto fromEntity(Chat chat, Long unreadCount) {
+    public static ChatResponseDto fromEntity(Chat chat, Integer unreadCount) {
         ChatResponseDto dto = fromEntity(chat);
         dto.setUnreadCount(unreadCount != null ? unreadCount : 0);
         return dto;

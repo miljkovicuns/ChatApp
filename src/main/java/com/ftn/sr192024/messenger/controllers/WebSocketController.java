@@ -5,10 +5,7 @@ import com.ftn.sr192024.messenger.models.dto.MessageResponseDto;
 import com.ftn.sr192024.messenger.models.dto.SendMessageDto;
 import com.ftn.sr192024.messenger.services.MessageService;
 import com.ftn.sr192024.messenger.services.UserService;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -52,7 +49,8 @@ public class WebSocketController {
 
     @MessageMapping("/chat.markRead")
     public void markMessagesAsRead(@Payload MarkReadRequest request, Principal principal) {
-        UUID userId = UUID.fromString(principal.getName());
+        String username = principal.getName();
+        UUID userId = userService.findByUsername(username).getId();
         messageService.markMessagesAsRead(request.getChatId(), userId);
 
         // ✅ Update unread count for all users in the chat
@@ -69,6 +67,7 @@ public class WebSocketController {
 
     @Getter
     @Setter
+    static
     class MarkReadRequest {
         private UUID chatId;
         // getters and setters
@@ -76,6 +75,7 @@ public class WebSocketController {
 
     @Getter
     @Setter
+    static
     class TypingRequest {
         private UUID chatId;
         private boolean typing;
@@ -84,7 +84,9 @@ public class WebSocketController {
 
     @Getter
     @Setter
+    @NoArgsConstructor
     @AllArgsConstructor
+    static
     class UnreadUpdateResponse {
         private UUID chatId;
         private UUID userId;
@@ -94,7 +96,8 @@ public class WebSocketController {
 
     @Getter
     @Setter
-    @AllArgsConstructor
+    @NoArgsConstructor
+    static
     class TypingResponse {
         private UUID userId;
         private UUID chatId;

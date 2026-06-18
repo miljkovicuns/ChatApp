@@ -2,15 +2,11 @@ package com.ftn.sr192024.messenger.controllers;
 
 import com.ftn.sr192024.messenger.models.Chat;
 import com.ftn.sr192024.messenger.models.Message;
-import com.ftn.sr192024.messenger.models.dto.ChatResponseDto;
 import com.ftn.sr192024.messenger.models.dto.GroupChatRequest;
 import com.ftn.sr192024.messenger.models.dto.SendMessageDto;
 import com.ftn.sr192024.messenger.services.ChatService;
 import com.ftn.sr192024.messenger.services.MessageService;
-import lombok.AllArgsConstructor;
-import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
@@ -81,9 +77,9 @@ public class ChatController {
     }
 
     @GetMapping("/unread-counts")
-    public ResponseEntity<Map<UUID, Long>> getAllUnreadCounts() {
+    public ResponseEntity<Map<UUID, Integer>> getAllUnreadCounts() {
         UUID userId = getCurrentUserId();
-        Map<UUID, Long> unreadCounts = messageService.getUnreadCountsForUser(userId);
+        Map<UUID, Integer> unreadCounts = messageService.getUnreadCountsForUser(userId);
         return ResponseEntity.ok(unreadCounts);
     }
 }

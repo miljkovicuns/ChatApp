@@ -1,17 +1,28 @@
-import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
+import {inject, Inject, Injectable} from '@angular/core';
+import {async, BehaviorSubject, Observable} from 'rxjs';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
+import {Auth} from './auth';
 
 @Injectable({
   providedIn: 'root'
 })
 export class WebSocketService {
-  private stompClient: Client | null = null;
-  private connectedSubject = new BehaviorSubject<boolean>(false);
-  private messageSubject = new BehaviorSubject<any>(null);
-  private unreadSubject = new BehaviorSubject<any>(null);
-  private typingSubject = new BehaviorSubject<any>(null);
+  private stompClient: Client = new Client({
+    // webSocketFactory: () => socket,
+    brokerURL: "ws://localhost:8080/api/ws",
+    beforeConnect: async () => {this.stompClient.connectHeaders={Authorization : "Bearer " + localStorage.getItem("auth_token")}},
+    reconnectDelay: 5000,
+    heartbeatIncoming: 4000,
+    heartbeatOutgoing: 4000,
+    debug: (str) => console.log('🔍 STOMP debug:', str)
+  })
+  private connectedSubject = new BehaviorSubject<boolean>(false)
+  private messageSubject = new BehaviorSubject<any>(null)
+  private unreadSubject = new BehaviorSubject<any>(null)
+  private typingSubject = new BehaviorSubject<any>(null)
+
+  private authService = inject(Auth)
 
   private currentChatId: string | null = null;
 
@@ -22,15 +33,7 @@ export class WebSocketService {
       // ✅ Use SockJS (handles CORS better)
       console.log('🔄 Attempting to connect to WebSocket...');
 
-      const socket = new SockJS('http://localhost:8080/ws');
-
-      this.stompClient = new Client({
-        webSocketFactory: () => socket,
-        reconnectDelay: 5000,
-        heartbeatIncoming: 4000,
-        heartbeatOutgoing: 4000,
-        debug: (str) => console.log('🔍 STOMP debug:', str)
-      });
+      // const socket = new SockJS('ws://localhost:8080/ws');
 
       this.stompClient.onConnect = () => {
         this.connectedSubject.next(true);

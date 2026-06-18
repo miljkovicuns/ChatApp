@@ -4,8 +4,6 @@ import com.ftn.sr192024.messenger.models.User;
 import com.ftn.sr192024.messenger.models.dto.FilterUserRequest;
 import com.ftn.sr192024.messenger.models.dto.UserResponseDTO;
 import com.ftn.sr192024.messenger.repository.UserRepository;
-import lombok.AllArgsConstructor;
-import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
@@ -124,5 +122,8 @@ public class UserService {
         return user.getLastOnline().isAfter(LocalDateTime.now().minusMinutes(5));
     }
 
+    public User findByUsername(String username) {
+        return userRepository.findByUsername(username).orElse(null);
+    }
 
 }

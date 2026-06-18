@@ -9,7 +9,6 @@ import com.ftn.sr192024.messenger.repository.MessageReadStatusRepository;
 import com.ftn.sr192024.messenger.repository.MessageRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -62,21 +61,30 @@ public class MessageService {
 
     @Transactional
     public void markMessagesAsRead(UUID chatId, UUID userId) {
-        User user = userService.findById(userId);
-        readStatusRepository.markAllMessagesAsRead(chatId, user);
+        List<Message> messages = messageRepository.findByChatIdOrderByDateOfSendingAsc(chatId).orElse(null);
+        assert messages != null;
+        for(Message message : messages) {
+            if(!readStatusRepository.existsByMessageIdAndUserId(message.getId(),userId)) {
+                MessageReadStatus messageReadStatus = new MessageReadStatus();
+                messageReadStatus.setMessage(messageRepository.findById(message.getId()).orElse(null));
+                messageReadStatus.setUser(userService.findById(userId));
+                messageReadStatus.setReadAt(LocalDateTime.now());
+                readStatusRepository.save(messageReadStatus);
+            }
+        }
     }
 
     public long getUnreadCountForChat(UUID chatId, UUID userId) {
         return readStatusRepository.countUnreadMessagesByChatAndUser(chatId, userId);
     }
 
-    public Map<UUID, Long> getUnreadCountsForUser(UUID userId) {
+    public Map<UUID, Integer> getUnreadCountsForUser(UUID userId) {
         List<Object[]> results = readStatusRepository.findUnreadMessageIdsAndChatIds(userId);
-        Map<UUID, Long> unreadCounts = new HashMap<>();
+        Map<UUID, Integer> unreadCounts = new HashMap<>();
 
         for (Object[] result : results) {
             UUID chatId = (UUID) result[1];
-            unreadCounts.merge(chatId, 1L, Long::sum);
+            unreadCounts.put(chatId,readStatusRepository.countUnreadMessagesByChatAndUser(chatId,userId));
         }
 
         return unreadCounts;
