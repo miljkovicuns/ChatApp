@@ -21,6 +21,8 @@ export class WebSocketService {
   private messageSubject = new BehaviorSubject<any>(null)
   private unreadSubject = new BehaviorSubject<any>(null)
   private typingSubject = new BehaviorSubject<any>(null)
+  private deliverySubject = new BehaviorSubject<any>(null);
+  private readReceiptSubject = new BehaviorSubject<null>(null);
 
   private authService = inject(Auth)
 
@@ -42,7 +44,17 @@ export class WebSocketService {
         // Subscribe to user notifications
         this.stompClient?.subscribe('/user/queue/notifications', (message) => {
           console.log('Notification received:', message.body);
-        });
+        })
+
+        this.stompClient?.subscribe("/user/queue/delivery", message => {
+          try {
+            const delivery = JSON.parse(message.body);
+            console.log('📤 Delivery update:', delivery);
+            this.deliverySubject.next(delivery);
+          } catch (error) {
+            console.error('Error parsing delivery update:', error);
+          }
+        })
       };
 
       this.stompClient.onStompError = (frame) => {
@@ -113,6 +125,26 @@ export class WebSocketService {
         console.error('Error parsing unread update:', error);
       }
     });
+
+    this.stompClient.subscribe(`/topic/chat/${chatId}/read`, message => {
+      try {
+        const receipt = JSON.parse(message.body);
+        console.log('👁️ Read receipt received:', receipt);
+        this.readReceiptSubject.next(receipt);
+      } catch (error) {
+        console.error('Error parsing read receipt:', error);
+      }
+    })
+
+    this.stompClient.subscribe(`/topic/chat/${chatId}/typing`, message => {
+      try {
+        const typing = JSON.parse(message.body);
+        console.log('⌨️ Typing indicator received:', typing);
+        this.typingSubject.next(typing);
+      } catch (error) {
+        console.error('Error parsing typing indicator:', error);
+      }
+    })
   }
 
   unsubscribeFromChat(): void {
@@ -155,6 +187,30 @@ export class WebSocketService {
       destination: '/app/chat.markRead',
       body: JSON.stringify(request)
     });
+  }
+
+  markAsDelivered(messageId: string, userId: string): void {
+    if (!this.stompClient?.connected) {
+      console.warn('⚠️ STOMP is not connected');
+      return;
+    }
+
+    this.stompClient.publish({
+      destination: '/app/chat.markDelivered',
+      body: JSON.stringify({
+        messageId: messageId,
+        userId: userId,
+        senderId: this.authService.getUser()?.id
+      })
+    });
+  }
+
+  onDeliveryUpdate(): Observable<any> {
+    return this.deliverySubject.asObservable();
+  }
+
+  onReadReceipt(): Observable<any> {
+    return this.readReceiptSubject.asObservable();
   }
 
   sendTyping(chatId: string, isTyping: boolean): void {

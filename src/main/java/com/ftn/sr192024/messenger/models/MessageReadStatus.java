@@ -32,6 +32,13 @@ public class MessageReadStatus {
     @CreationTimestamp
     private LocalDateTime readAt;
 
+    @Column(name = "delivered_at")
+    private LocalDateTime deliveredAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
+    private ReadEnum status = ReadEnum.SENT;
+
     public MessageReadStatus(Message message, User user) {
         this.message = message;
         this.user = user;

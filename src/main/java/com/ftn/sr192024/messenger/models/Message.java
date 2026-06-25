@@ -54,10 +54,31 @@ public class Message {
     @JsonIgnore
     private List<MessageReadStatus> readStatuses = new ArrayList<>();
 
+    @Transient
+    public ReadEnum getStatusForUser(UUID userId) {
+        if (sender.getId() == userId) {
+            return ReadEnum.SENT;
+        }
+
+        return readStatuses.stream()
+                .filter(status -> status.getUser().getId().equals(userId))
+                .findFirst()
+                .map(MessageReadStatus::getStatus)
+                .orElse(ReadEnum.SENT);
+    }
+
     // Helper method to check if a user has read this message
     @Transient
     public boolean isReadByUser(UUID userId) {
         return readStatuses.stream()
                 .anyMatch(status -> status.getUser().getId().equals(userId));
+    }
+
+    @Transient
+    public boolean isDeliveredToUser(UUID userId) {
+        return readStatuses.stream()
+                .anyMatch(messageReadStatus -> messageReadStatus.getUser().getId().equals(userId) &&
+                        (messageReadStatus.getStatus() == ReadEnum.DELIVERED ||
+                                messageReadStatus.getStatus() == ReadEnum.READ));
     }
 }

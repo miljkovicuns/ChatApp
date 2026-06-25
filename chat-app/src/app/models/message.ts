@@ -1,6 +1,8 @@
 import {User} from './user';
 import {Chat} from './chat';
 
+export type MessageStatus = 'SENT' | 'DELIVERED' | 'READ';
+
 export interface Message {
   id: string;
   content: string;
@@ -10,5 +12,7 @@ export interface Message {
   replyTo: Message | null;
   reactions: any[];
   forwardedFrom: Message | null;
-  isOwn?: boolean;
+  own?: boolean;
+  status:MessageStatus
+  deliveredAt?: string
 }

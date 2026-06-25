@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 
@@ -29,4 +30,13 @@ public interface MessageReadStatusRepository extends JpaRepository<MessageReadSt
             "WHERE NOT EXISTS (SELECT 1 FROM MessageReadStatus rs " +
             "                  WHERE rs.message = m AND rs.user.id = :userId)")
     List<Object[]> findUnreadMessageIdsAndChatIds(@Param("userId") UUID userId);
+
+    Optional<MessageReadStatus> findByMessageIdAndUserId(UUID messageId, UUID userId);
+
+    @Query("SELECT m.id, m.chat.id FROM Message m " +
+            "WHERE m.sender.id != :userId " +
+            "AND EXISTS (SELECT 1 FROM MessageReadStatus rs " +
+            "               WHERE rs.message = m AND rs.user.id = :userId " +
+            "               AND rs.status = 'DELIVERED')")
+    List<Object[]> findDeliveredMessageIdsAndChatIds(@Param("userId") UUID userId);
 }

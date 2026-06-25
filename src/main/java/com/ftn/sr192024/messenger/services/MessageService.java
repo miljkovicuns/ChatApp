@@ -1,9 +1,6 @@
 package com.ftn.sr192024.messenger.services;
 
-import com.ftn.sr192024.messenger.models.Chat;
-import com.ftn.sr192024.messenger.models.Message;
-import com.ftn.sr192024.messenger.models.MessageReadStatus;
-import com.ftn.sr192024.messenger.models.User;
+import com.ftn.sr192024.messenger.models.*;
 import com.ftn.sr192024.messenger.models.dto.SendMessageDto;
 import com.ftn.sr192024.messenger.repository.MessageReadStatusRepository;
 import com.ftn.sr192024.messenger.repository.MessageRepository;
@@ -60,6 +57,16 @@ public class MessageService {
     }
 
     @Transactional
+    public void markMessageAsDelivered(UUID messageId, UUID userId) {
+        MessageReadStatus status = readStatusRepository.findByMessageIdAndUserId(messageId, userId).orElse(null);
+        if (status != null && status.getStatus() == ReadEnum.SENT) {
+            status.setStatus(ReadEnum.DELIVERED);
+            status.setDeliveredAt(LocalDateTime.now());
+            readStatusRepository.save(status);
+        }
+    }
+
+    @Transactional
     public void markMessagesAsRead(UUID chatId, UUID userId) {
         List<Message> messages = messageRepository.findByChatIdOrderByDateOfSendingAsc(chatId).orElse(null);
         assert messages != null;
@@ -88,5 +95,11 @@ public class MessageService {
         }
 
         return unreadCounts;
+    }
+
+    public ReadEnum getMessageStatusForUser(UUID messageId, UUID userId) {
+        return readStatusRepository.findByMessageIdAndUserId(messageId, userId)
+                .map(MessageReadStatus::getStatus)
+                .orElse(ReadEnum.SENT);
     }
 }

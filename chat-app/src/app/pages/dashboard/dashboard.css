@@ -1465,3 +1465,64 @@ textarea:focus {
   background: #f0f7ff;
   font-weight: bold;
 }
+
+/* dashboard.css - Add status styles */
+.message-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 4px;
+  gap: 8px;
+}
+
+.message-status {
+  font-size: 12px;
+  color: #95a5a6;
+  transition: color 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.message-status.sent {
+  color: #95a5a6;
+}
+
+.message-status.delivered {
+  color: #4a90e2;
+}
+
+.message-status.read {
+  color: #2ecc71;
+}
+
+.read-text {
+  font-size: 10px;
+  margin-left: 2px;
+}
+
+/* Dark theme adjustments */
+.dark-theme .message-status.sent {
+  color: #7f8c8d;
+}
+
+.dark-theme .message-status.delivered {
+  color: #5b9bd5;
+}
+
+.dark-theme .message-status.read {
+  color: #4caf50;
+}
+
+/* Own message status in dark/light */
+.own-message .message-status.sent {
+  color: #a0c0e8;
+}
+
+.own-message .message-status.delivered {
+  color: #6eb4ff;
+}
+
+.own-message .message-status.read {
+  color: #66bb6a;
+}

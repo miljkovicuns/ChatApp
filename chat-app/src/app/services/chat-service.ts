@@ -46,7 +46,8 @@ export class ChatService {
   }
 
   getMessages(chatId: string): Observable<Message[]> {
-    return this.http.get<Message[]>(`${this.apiUrl}/messages/${chatId}`)
+    let messages = this.http.get<Message[]>(`${this.apiUrl}/messages/${chatId}`)
+    return messages
   }
 
   sendMessage(request: SendMessageRequest): Observable<Message> {

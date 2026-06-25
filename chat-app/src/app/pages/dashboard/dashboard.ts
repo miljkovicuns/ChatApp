@@ -23,6 +23,7 @@ import {Observable} from 'rxjs';
 import {DomSanitizer, SafeUrl} from '@angular/platform-browser';
 import {UserFilterParams} from '../../models/user-filter-params';
 import {WebSocketService} from '../../services/web-socket-service';
+import {Message} from '../../models/message';
 
 @Component({
   selector: 'app-dashboard',
@@ -106,6 +107,8 @@ export class Dashboard implements OnInit,OnDestroy {
   private heartbeatInterval: any = null
   private messagePollingInterval: any = null
 
+  messageStatuses: Map<string, 'sent' | 'delivered' | 'read'> = new Map();
+
   constructor() {
     this.profileForm = this.fb.group({
       username: ['', [Validators.required, Validators.minLength(3)]],
@@ -145,6 +148,15 @@ export class Dashboard implements OnInit,OnDestroy {
     this.webSocketService.onTyping().subscribe((typing: any) => {
       this.handleTyping(typing);
     });
+
+    this.webSocketService.onDeliveryUpdate().subscribe((update: any) => {
+      this.handleDeliveryUpdate(update);
+    });
+
+    // Subscribe to read receipts
+    this.webSocketService.onReadReceipt().subscribe((receipt: any) => {
+      this.handleReadReceipt(receipt);
+    });
   }
 
   ngOnDestroy() {
@@ -178,7 +190,6 @@ export class Dashboard implements OnInit,OnDestroy {
 
   loadCurrentUser() {
     this.currentUser = this.authService.getUser()
-    console.log("current user")
     if (this.currentUser) {
       this.profileForm.patchValue({
         username: this.currentUser.username || '',
@@ -285,7 +296,6 @@ export class Dashboard implements OnInit,OnDestroy {
   }
 
   loadChats() {
-    console.log("loading chats...")
     this.isLoadingChats = true
     this.chatService.getUserChats()
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -294,7 +304,6 @@ export class Dashboard implements OnInit,OnDestroy {
           this.chats = chats
           this.isLoadingChats = false
           this.cdr.detectChanges()
-          console.log("finished loading chats")
           this.loadUnreadCounts()
         },
         error: (err) => {
@@ -313,8 +322,10 @@ export class Dashboard implements OnInit,OnDestroy {
           this.messages = messages.map(msg => ({
             ...msg,
             isOwn: msg.sender?.id === this.currentUser?.id,
-            dateOfSending: msg.dateOfSending ? new Date(msg.dateOfSending) : null
+            dateOfSending: msg.dateOfSending ? new Date(msg.dateOfSending) : null,
+            status: msg.status || "SENT",
           }));
+          console.log("First message body: " + messages[0].content  + " First message status: " + messages[0].status + " First message is own: " + messages[0].isOwn)
           this.isLoadingMessages = false;
           this.cdr.detectChanges();
         },
@@ -327,7 +338,6 @@ export class Dashboard implements OnInit,OnDestroy {
 
   loadAvailableUsers() {
     if (!this.currentUser?.id) {
-      console.log('Current user not loaded yet, retrying...');
       setTimeout(() => this.loadAvailableUsers(), 500);
       return;
     }
@@ -439,7 +449,6 @@ export class Dashboard implements OnInit,OnDestroy {
     if(unread) {
       chat.unread = unread
     }
-    console.log(unread)
     if (chat.unread && chat.unread > 0) {
       this.markMessagesAsRead(chat.id);
     }
@@ -669,7 +678,6 @@ export class Dashboard implements OnInit,OnDestroy {
           this.chats.forEach(chat => {
             const hasCount = this.unreadCounts.has(chat.id);
             const count = this.unreadCounts.get(chat.id) || 0;
-            console.log(`Chat ${chat.id} (${chat.name}): hasCount=${hasCount}, count=${count}`);
           });
 
           // ✅ Update chats with unread counts
@@ -678,7 +686,6 @@ export class Dashboard implements OnInit,OnDestroy {
             unread: this.unreadCounts.get(chat.id) || 0
           }));
 
-          console.log('✅ Updated chats:', this.chats);
           this.cdr.detectChanges();
         },
         error: (err) => {
@@ -742,16 +749,74 @@ export class Dashboard implements OnInit,OnDestroy {
     }
   }
 
+  private handleDeliveryUpdate(update: any) {
+    if (!update || !update.messageId) return;
+
+    // Find and update the message status
+    const message = this.messages.find(m => m.id === update.messageId);
+    if (message) {
+      message.status = update.status;
+      if (update.status === 'DELIVERED') {
+        message.deliveredAt = new Date().toISOString();
+      }
+      this.cdr.detectChanges();
+    }
+  }
+
+// Handle read receipt
+  private handleReadReceipt(receipt: any) {
+    if (!receipt || !receipt.chatId) return;
+
+    // Mark all messages in the chat as read (except own)
+    const now = new Date().toISOString();
+    this.messages.forEach(msg => {
+      if (!msg.isOwn && msg.sender?.id !== receipt.userId) {
+        msg.status = 'READ';
+        msg.readAt = now;
+      }
+    });
+    this.cdr.detectChanges();
+  }
+
+// Helper to check if message is read
+  isMessageRead(message: Message): boolean {
+    return message.status === 'READ';
+  }
+
+// Helper to check if message is delivered
+  isMessageDelivered(message: Message): boolean {
+    return message.status === 'DELIVERED' || message.status === 'READ';
+  }
+
   sendMessage() {
     if (!this.newMessage?.trim() || !this.selectedChat?.id || !this.currentUser?.id) {
       return;
     }
+
+    // Generate temporary ID for optimistic update
+    const tempId = 'temp-' + Date.now();
+    const tempMessage: Message = {
+      id: tempId,
+      content: this.newMessage,
+      chat: this.selectedChat,
+      sender: this.currentUser,
+      dateOfSending: new Date().toISOString(),
+      own: true,
+      status: 'SENT',  // Initial status
+      replyTo: null,
+      reactions: [],
+      forwardedFrom: null
+    };
+
+    // Optimistically add message
+    this.messages.push(tempMessage);
 
     this.webSocketService.sendMessage(
       this.selectedChat.id,
       this.newMessage,
       this.currentUser.id
     );
+
     this.newMessage = '';
     this.cdr.detectChanges();
   }
@@ -776,34 +841,37 @@ export class Dashboard implements OnInit,OnDestroy {
       return;
     }
 
-    console.log('New message received:', message);
 
-    // If this is the selected chat, add to messages
     if (this.selectedChat && message.chatId === this.selectedChat.id) {
       const exists = this.messages.some(m => m.id === message.id);
       if (!exists) {
+        // Set status from the message or default to 'SENT'
+        const status = message.status || 'SENT';
         this.messages.push({
           ...message,
           isOwn: message.senderId === this.currentUser?.id,
-          dateOfSending: new Date(message.dateOfSending)
+          dateOfSending: message.dateOfSending || new Date().toISOString(),
+          status: status
         });
+
         this.cdr.detectChanges();
 
-        // Mark as read immediately
+        // If not own message, mark as delivered and read
         if (message.senderId !== this.currentUser?.id) {
+          // Mark message as delivered
+          this.webSocketService.markAsDelivered(message.id, this.currentUser?.id);
+          // Mark chat as read
           this.webSocketService.markAsRead(this.selectedChat.id);
         }
       }
     }
 
-    // Update unread count for the chat
+    // Update unread count
     const chat = this.chats.find(c => c.id === message.chatId);
     if (chat && message.senderId !== this.currentUser?.id) {
-      // If this is not the selected chat, increment unread
       if (chat.id !== this.selectedChat?.id) {
         chat.unread = (chat.unread || 0) + 1;
       } else {
-        // If it's the selected chat, unread should be 0
         chat.unread = 0;
       }
       this.cdr.detectChanges();
@@ -815,8 +883,6 @@ export class Dashboard implements OnInit,OnDestroy {
       console.warn('Invalid unread update received:', update);
       return;
     }
-
-    console.log('Unread update received:', update);
 
     const chat = this.chats.find(c => c.id === update.chatId);
     if (chat) {

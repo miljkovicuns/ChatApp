@@ -3,6 +3,7 @@ package com.ftn.sr192024.messenger.controllers;
 import com.ftn.sr192024.messenger.models.Chat;
 import com.ftn.sr192024.messenger.models.Message;
 import com.ftn.sr192024.messenger.models.dto.GroupChatRequest;
+import com.ftn.sr192024.messenger.models.dto.MessageResponseDto;
 import com.ftn.sr192024.messenger.models.dto.SendMessageDto;
 import com.ftn.sr192024.messenger.services.ChatService;
 import com.ftn.sr192024.messenger.services.MessageService;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static com.ftn.sr192024.messenger.security.SecurityUtils.getCurrentUserId;
 
@@ -57,9 +59,16 @@ public class ChatController {
     }
 
     @GetMapping("/messages/{chatId}")
-    public ResponseEntity<List<Message>> getChatMessages(@PathVariable UUID chatId) {
+    public ResponseEntity<List<MessageResponseDto>> getChatMessages(@PathVariable UUID chatId) {
+        UUID currentUserId = getCurrentUserId();
         List<Message> messages = messageService.findByChatId(chatId);
-        return ResponseEntity.ok(messages);
+
+        // Convert each message to DTO with status for current user
+        List<MessageResponseDto> messageDtos = messages.stream()
+                .map(msg -> MessageResponseDto.fromEntity(msg, currentUserId))
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(messageDtos);
     }
 
     @PostMapping("/mark-read/{chatId}")
