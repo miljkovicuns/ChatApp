@@ -9,10 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -40,29 +37,49 @@ public class MessageService {
 
         // ✅ Create and save message
         Message message = new Message();
+        User sender = userService.findById(sendMessageDto.getSenderId());
         Chat chat = chatUpdateService.findChatById(sendMessageDto.getChatId());
         message.setChat(chat);
-        message.setSender(userService.findById(sendMessageDto.getSenderId()));
+        message.setSender(sender);
         message.setContent(sendMessageDto.getContent().trim());
         message.setDateOfSending(LocalDateTime.now());
+        List<MessageReadStatus> statuses = new ArrayList<>();
+        if(chat.isGroupChat()) {
+            List<User> participants = chat.getParticipants().stream().filter(user -> user.getId() != sender.getId()).toList();
+            for(User participant : participants) {
+
+                MessageReadStatus status = new MessageReadStatus();
+                status.setUser(participant);
+                status.setMessage(message);
+                status.setStatus(ReadEnum.SENT);
+
+            }
+        }else{
+            User participant = chat.getParticipants().stream().filter(user -> user.getId() != sender.getId()).toList().get(0);
+            MessageReadStatus status = new MessageReadStatus();
+            status.setUser(participant);
+            status.setMessage(message);
+            status.setStatus(ReadEnum.SENT);
+            statuses.add(status);
+        }
+        message.setReadStatuses(statuses);
 
         Message saved = messageRepository.save(message);
 
-        // ✅ Mark as read by sender
-        User sender = userService.findById(sendMessageDto.getSenderId());
-        MessageReadStatus senderReadStatus = new MessageReadStatus(saved, sender);
-        readStatusRepository.save(senderReadStatus);
+        markMessageAsDelivered(message.getId());
 
         return saved;
     }
 
     @Transactional
-    public void markMessageAsDelivered(UUID messageId, UUID userId) {
-        MessageReadStatus status = readStatusRepository.findByMessageIdAndUserId(messageId, userId).orElse(null);
-        if (status != null && status.getStatus() == ReadEnum.SENT) {
-            status.setStatus(ReadEnum.DELIVERED);
-            status.setDeliveredAt(LocalDateTime.now());
-            readStatusRepository.save(status);
+    public void markMessageAsDelivered(UUID messageId) {
+        List<MessageReadStatus> statuses = readStatusRepository.findByMessageId(messageId).orElse(null);
+        if (statuses != null && !statuses.isEmpty()) {
+            for (MessageReadStatus status : statuses) {
+                status.setStatus(ReadEnum.DELIVERED);
+                status.setDeliveredAt(LocalDateTime.now());
+                readStatusRepository.save(status);
+            }
         }
     }
 
@@ -71,12 +88,15 @@ public class MessageService {
         List<Message> messages = messageRepository.findByChatIdOrderByDateOfSendingAsc(chatId).orElse(null);
         assert messages != null;
         for(Message message : messages) {
-            if(!readStatusRepository.existsByMessageIdAndUserId(message.getId(),userId)) {
-                MessageReadStatus messageReadStatus = new MessageReadStatus();
-                messageReadStatus.setMessage(messageRepository.findById(message.getId()).orElse(null));
-                messageReadStatus.setUser(userService.findById(userId));
-                messageReadStatus.setReadAt(LocalDateTime.now());
-                readStatusRepository.save(messageReadStatus);
+            if(readStatusRepository.existsByMessageIdAndUserId(message.getId(),userId) && !message.getSender().getId().equals(userId)) {
+                List<MessageReadStatus> statuses = readStatusRepository.findByMessageChatIdAndUserId(chatId,userId);
+                for (MessageReadStatus status : statuses) {
+                    status.setMessage(messageRepository.findById(message.getId()).orElse(null));
+                    status.setUser(userService.findById(userId));
+                    status.setReadAt(LocalDateTime.now());
+                    status.setStatus(ReadEnum.READ);
+                    readStatusRepository.save(status);
+                }
             }
         }
     }
@@ -95,11 +115,5 @@ public class MessageService {
         }
 
         return unreadCounts;
-    }
-
-    public ReadEnum getMessageStatusForUser(UUID messageId, UUID userId) {
-        return readStatusRepository.findByMessageIdAndUserId(messageId, userId)
-                .map(MessageReadStatus::getStatus)
-                .orElse(ReadEnum.SENT);
     }
 }

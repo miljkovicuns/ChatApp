@@ -27,7 +27,7 @@ public class WebSocketMessage {
     public static WebSocketMessage fromMessage(Message message, UUID currentUserId) {
         // Get status for the current user
         ReadEnum status = message.getReadStatuses().stream()
-                .filter(rs -> rs.getUser().getId().equals(currentUserId))
+                .filter(rs -> !rs.getUser().getId().equals(currentUserId))
                 .findFirst()
                 .map(MessageReadStatus::getStatus)
                 .orElse(ReadEnum.SENT);

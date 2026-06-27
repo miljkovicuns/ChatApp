@@ -115,29 +115,25 @@
       </div>
       <div class="messages-area" #messagesContainer *ngIf="selectedChat; else noChatSelected">
         @for (message of messages; track message.id) {
-          <div class="message" [class.own-message]="message.own">
+          <div class="message" [class.own-message]="message.isOwn">
             <div class="message-content">
               <div class="message-text">{{ message.content }}</div>
               <div class="message-footer">
-                @if (message.own) {
+                @if (message.isOwn) {
                   <span class="message-time">{{ message.dateOfSending | date:'short' }}</span>
                 } @else {
                   <span class="message-time" style="color: #000000">{{ message.dateOfSending | date:'short' }}</span>
                 }
-                @if (message.own) {
+                @if (message.isOwn) {
                   <span class="message-status" [class]="message.status">
               @if (message.status === 'SENT') {
                 ✓
               } @else if (isMessageDelivered(message)) {
                 ✓✓
               } @else if (isMessageRead(message)) {
-                ✓✓
-                <span class="read-text">Read</span>
+                <span class="read-text" style="color: greenyellow">Read ✓✓</span>
               }
             </span>
-                }
-                @if (!message.isOwn && message.status === 'READ') {
-                  <span class="message-status read">✓✓ Read</span>
                 }
               </div>
             </div>

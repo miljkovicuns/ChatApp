@@ -319,15 +319,20 @@ export class Dashboard implements OnInit,OnDestroy {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (messages: any[]) => {
-          this.messages = messages.map(msg => ({
-            ...msg,
-            isOwn: msg.sender?.id === this.currentUser?.id,
-            dateOfSending: msg.dateOfSending ? new Date(msg.dateOfSending) : null,
-            status: msg.status || "SENT",
-          }));
-          console.log("First message body: " + messages[0].content  + " First message status: " + messages[0].status + " First message is own: " + messages[0].isOwn)
-          this.isLoadingMessages = false;
-          this.cdr.detectChanges();
+          if(messages.length > 0) {
+            this.messages = messages.map(msg => ({
+              ...msg,
+              isOwn: msg.own,
+              dateOfSending: msg.dateOfSending ? new Date(msg.dateOfSending) : null,
+              status: msg.status || "SENT",
+            }));
+            console.log("First message body: " + messages[0].content  + " First message status: " + messages[0].status + " First message is own: " + messages[0].own)
+            this.isLoadingMessages = false;
+            this.cdr.detectChanges();
+          }else {
+            this.messages.length = 0
+            this.cdr.detectChanges()
+          }
         },
         error: (err) => {
           console.error('Error loading messages:', err);
@@ -722,12 +727,12 @@ export class Dashboard implements OnInit,OnDestroy {
             });
 
             if (hasNewMessage) {
-              this.cdr.detectChanges();
               if (this.selectedChat) {
                 this.markMessagesAsRead(this.selectedChat.id);
               }
             }
           }
+          this.cdr.detectChanges();
         },
         error: (err) => console.error('Error polling messages:', err)
       });
@@ -780,36 +785,18 @@ export class Dashboard implements OnInit,OnDestroy {
 
 // Helper to check if message is read
   isMessageRead(message: Message): boolean {
-    return message.status === 'READ';
+    return message.status === "READ";
   }
 
 // Helper to check if message is delivered
   isMessageDelivered(message: Message): boolean {
-    return message.status === 'DELIVERED' || message.status === 'READ';
+    return message.status === "DELIVERED";
   }
 
   sendMessage() {
     if (!this.newMessage?.trim() || !this.selectedChat?.id || !this.currentUser?.id) {
       return;
     }
-
-    // Generate temporary ID for optimistic update
-    const tempId = 'temp-' + Date.now();
-    const tempMessage: Message = {
-      id: tempId,
-      content: this.newMessage,
-      chat: this.selectedChat,
-      sender: this.currentUser,
-      dateOfSending: new Date().toISOString(),
-      own: true,
-      status: 'SENT',  // Initial status
-      replyTo: null,
-      reactions: [],
-      forwardedFrom: null
-    };
-
-    // Optimistically add message
-    this.messages.push(tempMessage);
 
     this.webSocketService.sendMessage(
       this.selectedChat.id,
@@ -845,21 +832,17 @@ export class Dashboard implements OnInit,OnDestroy {
     if (this.selectedChat && message.chatId === this.selectedChat.id) {
       const exists = this.messages.some(m => m.id === message.id);
       if (!exists) {
-        // Set status from the message or default to 'SENT'
-        const status = message.status || 'SENT';
         this.messages.push({
           ...message,
           isOwn: message.senderId === this.currentUser?.id,
           dateOfSending: message.dateOfSending || new Date().toISOString(),
-          status: status
+          status: message.status
         });
 
         this.cdr.detectChanges();
 
         // If not own message, mark as delivered and read
         if (message.senderId !== this.currentUser?.id) {
-          // Mark message as delivered
-          this.webSocketService.markAsDelivered(message.id, this.currentUser?.id);
           // Mark chat as read
           this.webSocketService.markAsRead(this.selectedChat.id);
         }

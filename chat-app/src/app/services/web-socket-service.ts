@@ -164,8 +164,6 @@ export class WebSocketService {
       senderId: senderId
     };
 
-    console.log('📤 Sending message:', message);
-
     this.stompClient.publish({
       destination: '/app/chat.sendMessage',
       body: JSON.stringify(message)

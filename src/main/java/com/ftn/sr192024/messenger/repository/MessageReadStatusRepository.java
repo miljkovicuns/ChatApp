@@ -20,18 +20,19 @@ public interface MessageReadStatusRepository extends JpaRepository<MessageReadSt
     // Count unread messages in a chat for a user
     @Query("SELECT COUNT(m) FROM Message m " +
             "WHERE m.chat.id = :chatId " +
+            "AND m.sender.id != :userId " +
             "AND NOT EXISTS (SELECT 1 FROM MessageReadStatus rs " +
-            "                WHERE rs.message = m AND rs.user.id = :userId)")
+            "                WHERE rs.message = m AND rs.user.id = :userId AND rs.status = ReadEnum.READ)")
     int countUnreadMessagesByChatAndUser(@Param("chatId") UUID chatId,
                                           @Param("userId") UUID userId);
 
     // Get all unread message IDs for a user across all chats
     @Query("SELECT m.id, m.chat.id FROM Message m " +
-            "WHERE NOT EXISTS (SELECT 1 FROM MessageReadStatus rs " +
-            "                  WHERE rs.message = m AND rs.user.id = :userId)")
+            "WHERE EXISTS (SELECT 1 FROM MessageReadStatus rs " +
+            "                  WHERE rs.message = m AND rs.user.id = :userId AND rs.status != 'READ')")
     List<Object[]> findUnreadMessageIdsAndChatIds(@Param("userId") UUID userId);
 
-    Optional<MessageReadStatus> findByMessageIdAndUserId(UUID messageId, UUID userId);
+    Optional<List<MessageReadStatus>> findByMessageId(UUID messageId);
 
     @Query("SELECT m.id, m.chat.id FROM Message m " +
             "WHERE m.sender.id != :userId " +

@@ -1,6 +1,6 @@
 import {inject, Injectable} from '@angular/core';
 import {HttpClient, HttpParams} from '@angular/common/http';
-import {Observable, tap} from 'rxjs';
+import {Observable} from 'rxjs';
 import {Chat} from '../models/chat';
 import {CreateGroupChatRequest} from '../models/create-group-chat-request';
 import {Message} from '../models/message';
@@ -46,8 +46,7 @@ export class ChatService {
   }
 
   getMessages(chatId: string): Observable<Message[]> {
-    let messages = this.http.get<Message[]>(`${this.apiUrl}/messages/${chatId}`)
-    return messages
+    return this.http.get<Message[]>(`${this.apiUrl}/messages/${chatId}`)
   }
 
   sendMessage(request: SendMessageRequest): Observable<Message> {

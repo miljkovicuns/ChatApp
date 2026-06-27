@@ -59,7 +59,7 @@ public class WebSocketController {
 
     @MessageMapping("/chat.markDelivered")
     public void markDelivered(@Payload MarkDeliveredRequest request) {
-        messageService.markMessageAsDelivered(request.getMessageId(), request.getUserId());
+        messageService.markMessageAsDelivered(request.getMessageId());
 
         messagingTemplate.convertAndSendToUser(
                 request.getSenderId().toString(),

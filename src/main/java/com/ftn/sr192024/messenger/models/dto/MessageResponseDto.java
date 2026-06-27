@@ -56,24 +56,10 @@ public class MessageResponseDto {
             dto.setChatId(message.getChat().getId());
         }
 
-        if (currentUserId != null && message.getSender() != null) {
-            // For own messages, status is always READ (you read your own messages)
-            if (message.getSender().getId().equals(currentUserId)) {
-                dto.setStatus("READ");
-            } else {
-                // For other users' messages, check status from read statuses
-                if (message.getReadStatuses() != null) {
-                    message.getReadStatuses().stream()
-                            .filter(rs -> rs.getUser().getId().equals(currentUserId))
-                            .findFirst()
-                            .ifPresent(rs -> dto.setStatus(rs.getStatus().name()));
-                }
-                if (dto.getStatus() == null) {
-                    dto.setStatus("SENT");
-                }
+        if (currentUserId != null && message.getSender() != null && message.getChat() != null) {
+            if (!message.getChat().isGroupChat()){
+                dto.setStatus(message.getReadStatuses().get(0).getStatus().toString());
             }
-        } else {
-            dto.setStatus("SENT");
         }
 
         return dto;

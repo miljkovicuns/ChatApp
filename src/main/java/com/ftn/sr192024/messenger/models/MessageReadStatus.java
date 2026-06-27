@@ -28,8 +28,11 @@ public class MessageReadStatus {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(name = "read_at", nullable = false)
+    @Column(name = "created_at")
     @CreationTimestamp
+    private LocalDateTime createdAt;
+
+    @Column(name = "read_at")
     private LocalDateTime readAt;
 
     @Column(name = "delivered_at")
@@ -37,7 +40,7 @@ public class MessageReadStatus {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
-    private ReadEnum status = ReadEnum.SENT;
+    private ReadEnum status;
 
     public MessageReadStatus(Message message, User user) {
         this.message = message;
