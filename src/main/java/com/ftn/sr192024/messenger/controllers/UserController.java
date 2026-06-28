@@ -2,21 +2,22 @@ package com.ftn.sr192024.messenger.controllers;
 
 import com.ftn.sr192024.messenger.models.User;
 import com.ftn.sr192024.messenger.models.dto.FilterUserRequest;
+import com.ftn.sr192024.messenger.models.dto.ProfileUpdateRequest;
 import com.ftn.sr192024.messenger.models.dto.UserResponseDTO;
-import com.ftn.sr192024.messenger.security.CustomUserDetails;
 import com.ftn.sr192024.messenger.security.SecurityUtils;
 import com.ftn.sr192024.messenger.services.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @RequiredArgsConstructor
 @RestController
@@ -34,8 +35,13 @@ public class UserController {
     @GetMapping("/me")
     public ResponseEntity<?> getCurrentUser(Authentication authentication){
         User user = SecurityUtils.getCurrentUser();
-
         return ResponseEntity.ok(user);
+    }
+
+    @PatchMapping("/me")
+    public ResponseEntity<?> updateCurrentUser(@RequestPart("request") ProfileUpdateRequest request, @RequestPart(value = "image", required = false)MultipartFile image) throws IOException {
+        Map<String,Object> response = userService.updateProfile(request, image);
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/filter")

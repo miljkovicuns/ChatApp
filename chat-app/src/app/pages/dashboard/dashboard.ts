@@ -19,7 +19,7 @@ import {Chat} from '../../models/chat';
 import {UserService} from '../../services/user-service';
 import {CreateGroupChatRequest} from '../../models/create-group-chat-request';
 import {SendMessageRequest} from '../../models/send-message-request';
-import {Observable} from 'rxjs';
+import {async, Observable} from 'rxjs';
 import {DomSanitizer, SafeUrl} from '@angular/platform-browser';
 import {UserFilterParams} from '../../models/user-filter-params';
 import {WebSocketService} from '../../services/web-socket-service';
@@ -116,6 +116,7 @@ export class Dashboard implements OnInit,OnDestroy {
       firstName: [''],
       lastName: [''],
       phoneNumber: [''],
+      image: ['']
     });
 
     this.groupChatForm = this.fb.group({
@@ -283,9 +284,7 @@ export class Dashboard implements OnInit,OnDestroy {
       const reader = new FileReader();
       reader.onload = (e) => {
         this.profileImagePreview = this.sanitizer.bypassSecurityTrustUrl(e.target?.result as string);
-        this.profileForm.patchValue({
-          image: e.target?.result
-        });
+        this.cdr.detectChanges()
       };
       reader.readAsDataURL(file);
     }
@@ -634,6 +633,10 @@ export class Dashboard implements OnInit,OnDestroy {
     this.showSettingsModal = false;
   }
 
+  detectChanges() {
+    this.cdr.detectChanges()
+  }
+
   updateProfile() {
     if (this.profileForm.invalid) {
       this.profileForm.markAllAsTouched();
@@ -644,26 +647,22 @@ export class Dashboard implements OnInit,OnDestroy {
     this.profileError = null;
 
     // TODO: Implement API call to update profile
-    // this.authService.updateProfile(this.profileForm.value).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-    //   next: (response) => {
-    //     this.isUpdatingProfile = false;
-    //     this.currentUser = { ...this.currentUser, ...this.profileForm.value };
-    //     this.authService.saveUser(this.currentUser);
-    //     this.closeProfileModal();
-    //   },
-    //   error: (err) => {
-    //     this.isUpdatingProfile = false;
-    //     this.profileError = err.error?.message || 'Failed to update profile';
-    //   }
-    // });
-
-    // Temporary simulation - remove when API is implemented
-    setTimeout(() => {
-      this.isUpdatingProfile = false;
-      this.currentUser = { ...this.currentUser, ...this.profileForm.value };
-      this.authService.saveUser(this.currentUser);
-      this.closeProfileModal();
-    }, 1000);
+    this.userService.updateProfile(this.profileForm.value,this.selectedImageFile!).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (response: Map<string,any>) => {
+        this.isUpdatingProfile = false;
+        this.currentUser = { ...this.currentUser, ...this.profileForm.value };
+        // @ts-ignore
+        localStorage.setItem("auth_token",response["accessToken"])
+        // @ts-ignore
+        localStorage.setItem("user",JSON.stringify(response["user"]))
+        this.closeProfileModal();
+        this.cdr.detectChanges()
+      },
+      error: (err) => {
+        this.isUpdatingProfile = false;
+        this.profileError = 'Failed to update profile: ' + err.error?.message;
+      }
+    });
   }
 
   loadUnreadCounts() {
@@ -736,22 +735,6 @@ export class Dashboard implements OnInit,OnDestroy {
         },
         error: (err) => console.error('Error polling messages:', err)
       });
-  }
-
-  private startMessagePolling() {
-    // This runs every 3 seconds
-    this.messagePollingInterval = setInterval(() => {
-      if (this.selectedChat) {
-        this.checkForNewMessages(this.selectedChat.id);
-      }
-    }, 3000); // 3 seconds interval
-  }
-
-  private stopMessagePolling() {
-    if (this.messagePollingInterval) {
-      clearInterval(this.messagePollingInterval);
-      this.messagePollingInterval = null;
-    }
   }
 
   private handleDeliveryUpdate(update: any) {

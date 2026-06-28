@@ -91,8 +91,6 @@ public class MessageService {
             if(readStatusRepository.existsByMessageIdAndUserId(message.getId(),userId) && !message.getSender().getId().equals(userId)) {
                 List<MessageReadStatus> statuses = readStatusRepository.findByMessageChatIdAndUserId(chatId,userId);
                 for (MessageReadStatus status : statuses) {
-                    status.setMessage(messageRepository.findById(message.getId()).orElse(null));
-                    status.setUser(userService.findById(userId));
                     status.setReadAt(LocalDateTime.now());
                     status.setStatus(ReadEnum.READ);
                     readStatusRepository.save(status);
