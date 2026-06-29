@@ -4,12 +4,11 @@ import com.ftn.sr192024.messenger.models.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -28,4 +27,10 @@ public interface UserRepository extends JpaRepository<User, UUID> {
             @Param("searchQuery") String searchQuery,
             Pageable pageable
     );
+
+    @Modifying
+    @Query("UPDATE User u SET u.passwordHash = :password WHERE u.id = :userId")
+    void updatePassword(@Param("password") String password,@Param("userId") UUID userId);
+
+    Optional<User> findUserById(UUID id);
 }

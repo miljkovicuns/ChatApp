@@ -6,11 +6,13 @@ import com.ftn.sr192024.messenger.models.dto.ProfileUpdateRequest;
 import com.ftn.sr192024.messenger.models.dto.UserResponseDTO;
 import com.ftn.sr192024.messenger.repository.UserRepository;
 import com.ftn.sr192024.messenger.security.JWTService;
+import com.ftn.sr192024.messenger.security.SecurityConfig;
 import com.ftn.sr192024.messenger.security.SecurityUtils;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -28,6 +30,8 @@ public class UserService {
     private final UserDetailsServiceImpl userDetailsService;
 
     private final JWTService jwtService;
+
+    private final SecurityConfig securityConfig;
 
     public List<User> findAllByIds(List<UUID> userIds) {
         return userRepository.findAllById(userIds);
@@ -166,6 +170,15 @@ public class UserService {
         response.put("accessToken",jwtToken);
 
         return response;
+    }
+
+    @Transactional
+    public void changePassword(String oldPassword, String newPassword) {
+        PasswordEncoder passwordEncoder = securityConfig.passwordEncoder();
+        if (passwordEncoder.matches(oldPassword,SecurityUtils.getCurrentUser().getPasswordHash())) {
+            String newPasswordHash = passwordEncoder.encode(newPassword);
+            userRepository.updatePassword(newPasswordHash,SecurityUtils.getCurrentUserId());
+        }
     }
 
 }

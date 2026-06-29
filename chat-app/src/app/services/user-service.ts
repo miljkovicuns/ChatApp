@@ -68,4 +68,7 @@ export class UserService {
 
     return this.http.patch<Map<string,any>>(`${this.apiUrl}/me`, formData)
   }
+
+  changePassword(oldPassword: string,newPassword: string) {
+  }
 }

@@ -43,12 +43,12 @@ export class Dashboard implements OnInit,OnDestroy {
   private webSocketService = inject(WebSocketService)
 
   //Profile related properties
-  currentUser: any = null;
-  showProfileModal = false;
-  showSettingsModal = false;
+  currentUser: any = null
+  showProfileModal = false
+  showSettingsModal = false
   showCreateChatModal = false
-  isUpdatingProfile = false;
-  profileError: string | null = null;
+  isUpdatingProfile = false
+  profileError: string | null = null
 
   // Chat-related properties
   selectedChat: Chat | null = null;

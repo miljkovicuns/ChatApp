@@ -44,6 +44,12 @@ public class UserController {
         return ResponseEntity.ok(response);
     }
 
+    @PatchMapping("/me/password")
+    public ResponseEntity<?> changePassword(@RequestPart("oldPassword") String oldPassword, @RequestPart("newPassword") String newPassword) {
+        userService.changePassword(oldPassword, newPassword);
+        return ResponseEntity.ok("Password changed!");
+    }
+
     @GetMapping("/filter")
     public ResponseEntity<List<UserResponseDTO>> getFilteredUsers(
             @RequestParam(required = false) String searchQuery,
