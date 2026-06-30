@@ -26,6 +26,9 @@
         <button class="icon-btn" (click)="openProfileModal()" title="Profile">
           👤
         </button>
+        <button class="icon-btn" (click)="changePassword()" title="Change Password">
+          🔒
+        </button>
         <button class="icon-btn" (click)="openSettingsModal()" title="Settings">
           ⚙️
         </button>
@@ -173,74 +176,16 @@
 </div>
 
 <!-- Profile Modal -->
-<div class="modal" *ngIf="showProfileModal" (click)="closeProfileModal()">
-  <div class="modal-content" (click)="$event.stopPropagation()">
-    <div class="modal-header">
-      <h2>Edit Profile</h2>
-      <button class="close-btn" (click)="closeProfileModal()">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="avatar-section">
-        <div class="profile-avatar" (click)="fileInput.click();">
-          @if (profileImagePreview) {
-            <img [src]="profileImagePreview"
-                alt="Profile avatar"
-                class="profile-avatar-image">
-          }
-          @if (!profileImagePreview) {
-            <span>
-              {{ (profileForm.get('username')?.value?.charAt(0) || 'U') | uppercase }}
-            </span>
-          }
-        </div>
-        <input type="file"
-               #fileInput
-               accept="image/*"
-               style="display: none"
-               (change)="onFileSelected($event)">
-        <button class="change-avatar-btn" (click)="fileInput.click()">Change Avatar</button>
-      </div>
-
-      <div class="form-group" [formGroup]="profileForm" ]>
-        <label>Username</label>
-        <input formControlName="username" type="text" placeholder="Enter username" />
-        <div class="error" *ngIf="profileForm.get('username')?.invalid && profileForm.get('username')?.touched">
-          Username is required (min 3 characters)
-        </div>
-      </div>
-
-      <div class="form-group" [formGroup]="profileForm">
-        <label>Email</label>
-        <input formControlName="email" type="email" placeholder="Enter email" />
-        <div class="error" *ngIf="profileForm.get('email')?.invalid && profileForm.get('email')?.touched">
-          Valid email is required
-        </div>
-      </div>
-
-      <div class="form-row">
-        <div class="form-group" [formGroup]="profileForm">
-          <label>First Name</label>
-          <input formControlName="firstName" type="text" placeholder="First name" />
-        </div>
-        <div class="form-group" [formGroup]="profileForm">
-          <label>Last Name</label>
-          <input formControlName="lastName" type="text" placeholder="Last name" />
-        </div>
-      </div>
-
-      <div class="form-group" [formGroup]="profileForm">
-        <label>Phone Number</label>
-        <input formControlName="phoneNumber" type="tel" placeholder="Phone number" />
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="cancel-btn" (click)="closeProfileModal()">Cancel</button>
-      <button class="save-btn" (click)="updateProfile()" [disabled]="profileForm.invalid">
-        Save Changes
-      </button>
-    </div>
-  </div>
-</div>
+<app-profile-modal
+  [isOpen]="showProfileModal"
+  [currentUser]="currentUser"
+  [isUpdating]="isUpdatingProfile"
+  [error]="profileError"
+  [profileImagePreview]="profileImagePreview"
+  (close)="closeProfileModal()"
+  (save)="onProfileSave($event)"
+  (fileSelected)="onProfileFileSelected($event)">
+</app-profile-modal>
 
 <!-- Settings Modal -->
 <div class="modal" *ngIf="showSettingsModal" (click)="closeSettingsModal()">
@@ -310,200 +255,23 @@
 </div>
 
 <!-- Create Chat Modal -->
-<div class="modal" *ngIf="showCreateChatModal" (click)="closeCreateChatModal()">
-  <div class="modal-content" (click)="$event.stopPropagation()">
-    <div class="modal-header">
-      <h2>Create New Chat</h2>
-      <button class="close-btn" (click)="closeCreateChatModal()">✕</button>
-    </div>
-    <div class="modal-body">
-      <!-- Step 1: Select Chat Type -->
-      <div *ngIf="createChatStep === 'type'">
-        <div class="chat-type-options">
-          <div class="chat-type-option" (click)="selectChatType('direct')">
-            <div class="chat-type-icon">👤</div>
-            <h3>Direct Chat</h3>
-            <p>Chat with one person privately</p>
-          </div>
-          <div class="chat-type-option" (click)="selectChatType('group')">
-            <div class="chat-type-icon">👥</div>
-            <h3>Group Chat</h3>
-            <p>Chat with multiple people at once</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Step 2: Select Participants -->
-      <div *ngIf="createChatStep === 'participants'">
-        <!-- Filter Buttons -->
-        <div class="filter-header">
-          <button class="filter-toggle-btn" (click)="toggleFilterPanel()">
-            🔍 Filters
-            <span class="filter-badge" *ngIf="getActiveFilterCount() > 0">
-              {{ getActiveFilterCount() }}
-            </span>
-          </button>
-          <button class="reset-filters-btn" *ngIf="getActiveFilterCount() > 0" (click)="resetFilters()">
-            Reset Filters
-          </button>
-        </div>
-
-        <!-- Filter Panel -->
-        <div class="filter-panel" *ngIf="showFilterPanel">
-          <div class="filter-section">
-            <label>Last Seen</label>
-            <div class="filter-options">
-              <button class="filter-option" [class.active]="filterParams.lastSeen === 'all'"
-                      (click)="filterParams.lastSeen = 'all'">
-                All
-              </button>
-              <button class="filter-option" [class.active]="filterParams.lastSeen === 'today'"
-                      (click)="filterParams.lastSeen = 'today'">
-                Today
-              </button>
-              <button class="filter-option" [class.active]="filterParams.lastSeen === 'week'"
-                      (click)="filterParams.lastSeen = 'week'">
-                This Week
-              </button>
-              <button class="filter-option" [class.active]="filterParams.lastSeen === 'month'"
-                      (click)="filterParams.lastSeen = 'month'">
-                This Month
-              </button>
-              <button class="filter-option" [class.active]="filterParams.lastSeen === 'offline'"
-                      (click)="filterParams.lastSeen = 'offline'">
-                Offline
-              </button>
-            </div>
-          </div>
-
-          <div class="filter-section">
-            <label>Profile Picture</label>
-            <div class="filter-options">
-              <button class="filter-option" [class.active]="filterParams.hasImage === 'all'"
-                      (click)="filterParams.hasImage = 'all'">
-                All
-              </button>
-              <button class="filter-option" [class.active]="filterParams.hasImage === 'hasImage'"
-                      (click)="filterParams.hasImage = 'hasImage'">
-                Has Picture 📷
-              </button>
-              <button class="filter-option" [class.active]="filterParams.hasImage === 'noImage'"
-                      (click)="filterParams.hasImage = 'noImage'">
-                No Picture 👤
-              </button>
-            </div>
-          </div>
-
-          <div class="filter-section">
-            <label>Sort By</label>
-            <div class="sort-controls">
-              <select [(ngModel)]="filterParams.sortBy" class="sort-select">
-                <option value="name">Name</option>
-                <option value="lastSeen">Last Seen</option>
-                <option value="recent">Recently Active</option>
-              </select>
-              <button class="sort-order-btn" (click)="filterParams.sortOrder = filterParams.sortOrder === 'asc' ? 'desc' : 'asc'">
-                {{ filterParams.sortOrder === 'asc' ? '↑' : '↓' }}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div class="selected-participants" *ngIf="selectedParticipants.length > 0">
-          <h4>Selected ({{ selectedParticipants.length }})</h4>
-          <div class="participant-tags">
-      <span *ngFor="let p of selectedParticipants" class="participant-tag">
-        <img *ngIf="p.hasImage" [src]="getImageUrl(p.profileImage)" class="tag-avatar">
-        <span class="tag-name">{{ p.firstName }} {{ p.lastName }}</span>
-        <button (click)="toggleParticipantSelection(p)">✕</button>
-      </span>
-          </div>
-        </div>
-
-        <div class="search-users">
-          <div class="search-input-group">
-            <input type="text"
-                   placeholder="🔍 Search users..."
-                   [(ngModel)]="searchUserQuery" />
-            <button class="search-btn" (click)="applyFilters()" [disabled]="isLoadingUsers">
-              {{ isLoadingUsers ? 'Searching...' : 'Search' }}
-            </button>
-          </div>
-        </div>
-
-        <!-- Loading Indicator -->
-        <div class="loading-indicator" *ngIf="isLoadingUsers">
-          Loading users...
-        </div>
-
-        <div class="users-list" *ngIf="!isLoadingUsers">
-          <div *ngFor="let user of filteredAvailableUsers" class="user-item"
-               [class.selected]="isParticipantSelected(user)"
-               (click)="toggleParticipantSelection(user)">
-            <div class="user-avatar">
-              @if (user.hasImage) {
-              <img [src]="getUserAvatar(user)" class="avatar-image-small">
-              }
-              @if (!user.hasImage) {
-              <span>{{ user.firstName?.charAt(0) }}{{ user.lastName?.charAt(0) }}</span>
-              }
-              @if (user.online) {
-              <div class="online-dot"></div>
-              }
-            </div>
-            <div class="user-info">
-              <div class="user-name">{{ user.firstName }} {{ user.lastName }}</div>
-              <div class="user-username">{{ user.username }}</div>
-              <div class="user-last-seen">{{ user.formattedLastSeen }}</div>
-            </div>
-            <div class="selection-check" *ngIf="isParticipantSelected(user)">✓</div>
-          </div>
-        </div>
-
-        <div class="error" *ngIf="createChatError">{{ createChatError }}</div>
-
-        <div class="modal-footer">
-          <button class="cancel-btn" (click)="goBack()">Back</button>
-          <button class="save-btn" (click)="proceedToNextStep()" [disabled]="selectedParticipants.length === 0">
-            {{ selectedChatType === 'direct' ? 'Create Chat' : 'Next' }}
-          </button>
-        </div>
-      </div>
-
-      <!-- Step 3: Group Details -->
-      <div *ngIf="createChatStep === 'group-details'">
-        <div class="form-group">
-          <label>Group Name *</label>
-          <input type="text" formControlName="name" placeholder="Enter group name" />
-          <div class="error" *ngIf="groupChatForm.get('name')?.invalid && groupChatForm.get('name')?.touched">
-            Group name is required (min 3 characters)
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label>Description (optional)</label>
-          <textarea formControlName="description" placeholder="Describe the group purpose" rows="3"></textarea>
-        </div>
-
-        <div class="selected-participants-summary">
-          <h4>Participants ({{ selectedParticipants.length + 1 }} including you)</h4>
-          <div class="participant-list">
-            <span *ngFor="let p of selectedParticipants" class="participant-name">
-              {{ p.firstName }} {{ p.lastName }}
-            </span>
-            <span class="participant-name you">You ({{ currentUser?.firstName }} {{ currentUser?.lastName }})</span>
-          </div>
-        </div>
-
-        <div class="error" *ngIf="createChatError">{{ createChatError }}</div>
-
-        <div class="modal-footer">
-          <button class="cancel-btn" (click)="goBack()">Back</button>
-          <button class="save-btn" (click)="createGroupChat()" [disabled]="groupChatForm.invalid || isCreatingChat">
-            {{ isCreatingChat ? 'Creating...' : 'Create Group Chat' }}
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
+<app-create-chat-modal
+  [isOpen]="showCreateChatModal"
+  [currentUserId]="currentUser?.id"
+  [currentUser]="currentUser"
+  [availableUsers]="availableUsers"
+  [isLoadingUsers]="isLoadingUsers"
+  [isCreatingChat]="isCreatingChat"
+  [createChatError]="createChatError"
+  [filterParams]="filterParams"
+  (close)="closeCreateChatModal()"
+  (typeSelected)="onChatTypeSelected($event)"
+  (back)="onChatBack()"
+  (proceed)="onChatProceed($event)"
+  (submitGroupChat)="onGroupChatSubmit($event)"
+  (participantToggled)="onParticipantToggled($event)"
+  (filtersChanged)="onFiltersChanged($event)"
+  (filterPanelToggled)="onFilterPanelToggled()"
+  (filtersReset)="onFiltersReset()"
+  (searchChanged)="onSearchChanged($event)">
+</app-create-chat-modal>

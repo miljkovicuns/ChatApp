@@ -1,9 +1,11 @@
 package com.ftn.sr192024.messenger.services;
 
+import com.ftn.sr192024.messenger.models.RegistrationRequest;
 import com.ftn.sr192024.messenger.models.User;
 import com.ftn.sr192024.messenger.models.dto.FilterUserRequest;
 import com.ftn.sr192024.messenger.models.dto.ProfileUpdateRequest;
 import com.ftn.sr192024.messenger.models.dto.UserResponseDTO;
+import com.ftn.sr192024.messenger.repository.RegisterRequestRepository;
 import com.ftn.sr192024.messenger.repository.UserRepository;
 import com.ftn.sr192024.messenger.security.JWTService;
 import com.ftn.sr192024.messenger.security.SecurityConfig;
@@ -32,6 +34,8 @@ public class UserService {
     private final JWTService jwtService;
 
     private final SecurityConfig securityConfig;
+
+    private final RegisterRequestRepository requestRepository;
 
     public List<User> findAllByIds(List<UUID> userIds) {
         return userRepository.findAllById(userIds);
@@ -179,6 +183,10 @@ public class UserService {
             String newPasswordHash = passwordEncoder.encode(newPassword);
             userRepository.updatePassword(newPasswordHash,SecurityUtils.getCurrentUserId());
         }
+    }
+
+    public List<RegistrationRequest> findAllRegistrationRequests() {
+        return requestRepository.findAll();
     }
 
 }

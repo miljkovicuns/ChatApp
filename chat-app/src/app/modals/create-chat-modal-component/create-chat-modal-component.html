@@ -1,0 +1,240 @@
+@if (isOpen) {
+  <div class="modal-overlay" (click)="onClose()">
+    <div class="modal-container" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Create New Chat</h2>
+        <button class="close-btn" (click)="onClose()">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Step 1: Select Chat Type -->
+        @if (createChatStep === 'type') {
+          <div>
+            <div class="chat-type-options">
+              <div class="chat-type-option" (click)="selectChatType('direct')">
+                <div class="chat-type-icon">👤</div>
+                <h3>Direct Chat</h3>
+                <p>Chat with one person privately</p>
+              </div>
+              <div class="chat-type-option" (click)="selectChatType('group')">
+                <div class="chat-type-icon">👥</div>
+                <h3>Group Chat</h3>
+                <p>Chat with multiple people at once</p>
+              </div>
+            </div>
+          </div>
+        }
+
+        @if (createChatStep === 'participants') {
+          <!-- Step 2: Select Participants -->
+          <div>
+            <!-- Filter Buttons -->
+            <div class="filter-header">
+              <button class="filter-toggle-btn" (click)="toggleFilterPanel()">
+                🔍 Filters
+                @if (getActiveFilterCount() > 0) {
+                  <span class="filter-badge">
+                  {{ getActiveFilterCount() }}
+                  </span>
+                }
+              </button>
+              @if (getActiveFilterCount() > 0) {
+                <button class="reset-filters-btn" (click)="resetFilters()">
+                  Reset Filters
+                </button>
+              }
+            </div>
+
+          @if (showFilterPanel) {
+            <!-- Filter Panel -->
+            <div class="filter-panel">
+              <div class="filter-section">
+                <label>Last Seen</label>
+                <div class="filter-options">
+                  <button class="filter-option" [class.active]="filterParams.lastSeen === 'all'"
+                          (click)="filterParams.lastSeen = 'all'; applyFilters()">
+                    All
+                  </button>
+                  <button class="filter-option" [class.active]="filterParams.lastSeen === 'today'"
+                          (click)="filterParams.lastSeen = 'today'; applyFilters()">
+                    Today
+                  </button>
+                  <button class="filter-option" [class.active]="filterParams.lastSeen === 'week'"
+                          (click)="filterParams.lastSeen = 'week'; applyFilters()">
+                    This Week
+                  </button>
+                  <button class="filter-option" [class.active]="filterParams.lastSeen === 'month'"
+                          (click)="filterParams.lastSeen = 'month'; applyFilters()">
+                    This Month
+                  </button>
+                  <button class="filter-option" [class.active]="filterParams.lastSeen === 'offline'"
+                          (click)="filterParams.lastSeen = 'offline'; applyFilters()">
+                    Offline
+                  </button>
+                </div>
+              </div>
+
+              <div class="filter-section">
+                <label>Profile Picture</label>
+                <div class="filter-options">
+                  <button class="filter-option" [class.active]="filterParams.hasImage === 'all'"
+                          (click)="filterParams.hasImage = 'all'; applyFilters()">
+                    All
+                  </button>
+                  <button class="filter-option" [class.active]="filterParams.hasImage === 'hasImage'"
+                          (click)="filterParams.hasImage = 'hasImage'; applyFilters()">
+                    Has Picture 📷
+                  </button>
+                  <button class="filter-option" [class.active]="filterParams.hasImage === 'noImage'"
+                          (click)="filterParams.hasImage = 'noImage'; applyFilters()">
+                    No Picture 👤
+                  </button>
+                </div>
+              </div>
+
+              <div class="filter-section">
+                <label>Sort By</label>
+                <div class="sort-controls">
+                  <select [(ngModel)]="filterParams.sortBy" (change)="applyFilters()" class="sort-select">
+                    <option value="name">Name</option>
+                    <option value="lastSeen">Last Seen</option>
+                    <option value="recent">Recently Active</option>
+                  </select>
+                  <button class="sort-order-btn" (click)="filterParams.sortOrder = filterParams.sortOrder === 'asc' ? 'desc' : 'asc'; applyFilters()">
+                    {{ filterParams.sortOrder === 'asc' ? '↑' : '↓' }}
+                  </button>
+                </div>
+              </div>
+            </div>
+          }
+
+          @if (selectedParticipants.length > 0) {
+            <!-- Selected Participants -->
+            <div class="selected-participants">
+              <h4>Selected ({{ selectedParticipants.length }})</h4>
+              <div class="participant-tags">
+                @for (p of selectedParticipants; track p.id) {
+                 <span class="participant-tag">
+                  <span class="tag-name">{{ p.firstName }} {{ p.lastName }}</span>
+                   <button (click)="toggleParticipantSelection(p)">✕</button>
+                 </span>
+                }
+              </div>
+            </div>
+          }
+
+            <!-- Search Users -->
+            <div class="search-users">
+              <div class="search-input-group">
+                <input type="text"
+                       placeholder="🔍 Search users..."
+                       [(ngModel)]="searchUserQuery"
+                       (ngModelChange)="onSearchChange()" />
+                <button class="search-btn" (click)="applyFilters()" [disabled]="isLoadingUsers">
+                  {{ isLoadingUsers ? 'Searching...' : 'Search' }}
+                </button>
+              </div>
+            </div>
+
+          @if (isLoadingUsers) {
+            <!-- Loading Indicator -->
+            <div class="loading-indicator">
+              Loading users...
+            </div>
+          }
+
+          @if (!isLoadingUsers) {
+            <!-- Users List -->
+            <div class="users-list">
+            @for (user of filteredAvailableUsers; track user.id) {
+              <div class="user-item"
+                   [class.selected]="isParticipantSelected(user)"
+                   (click)="toggleParticipantSelection(user)">
+                <div class="user-avatar">
+                  @if (user.profileImage) {
+                    <img [src]="getUserAvatar(user)" class="avatar-image-small" alt="">
+                  }
+                  @if (!user.profileImage) {
+                    <span>{{ getInitials(user) }}</span>
+                  }
+                  @if (isUserOnline(user)) {
+                    <div class="online-dot"></div>
+                  }
+                </div>
+                <div class="user-info">
+                  <div class="user-name">{{ user.firstName }} {{ user.lastName }}</div>
+                  <div class="user-username">&#64;{{ user.username }}</div>
+                  <div class="user-last-seen">{{ getLastSeenText(user) }}</div>
+                </div>
+                @if (isParticipantSelected(user)) {
+                <div class="selection-check">✓</div>
+                }
+              </div>
+            }
+            </div>
+          }
+
+          @if (createChatError) {
+            <!-- Error Message -->
+            <div class="error">{{ createChatError }}</div>
+          }
+
+            <!-- Footer -->
+            <div class="modal-footer">
+              <button class="cancel-btn" (click)="goBack()">Back</button>
+              <button class="save-btn" (click)="proceedToNextStep()" [disabled]="selectedParticipants.length === 0 || isCreatingChat">
+                {{ selectedChatType === 'direct' ? 'Create Chat' : 'Next' }}
+              </button>
+            </div>
+          </div>
+        }
+
+
+        @if (createChatStep === 'group-details') {
+        <!-- Step 3: Group Details -->
+        <div>
+          <form [formGroup]="groupChatForm">
+            <div class="form-group">
+              <label>Group Name *</label>
+              <input type="text" formControlName="name" placeholder="Enter group name" />
+              @if (groupChatForm.get('name')?.invalid && groupChatForm.get('name')?.touched) {
+              <div class="error">
+                Group name is required (min 3 characters)
+              </div>
+              }
+            </div>
+
+            <div class="form-group">
+              <label>Description (optional)</label>
+              <textarea formControlName="description" placeholder="Describe the group purpose" rows="3"></textarea>
+            </div>
+
+            <div class="selected-participants-summary">
+              <h4>Participants ({{ selectedParticipants.length + 1 }} including you)</h4>
+              <div class="participant-list">
+                @for (p of selectedParticipants; track p.id) {
+                  <span class="participant-name">
+                    {{ p.firstName }} {{ p.lastName }}
+                  </span>
+                }
+                <span class="participant-name you">You ({{ currentUser?.firstName }} {{ currentUser?.lastName }})</span>
+              </div>
+            </div>
+          </form>
+
+          @if (createChatError) {
+          <div class="error">{{ createChatError }}</div>
+          }
+
+          <div class="modal-footer">
+            <button class="cancel-btn" (click)="goBack()">Back</button>
+            <button class="save-btn" (click)="createGroupChat()" [disabled]="groupChatForm.invalid || isCreatingChat">
+              {{ isCreatingChat ? 'Creating...' : 'Create Group Chat' }}
+            </button>
+          </div>
+        </div>
+        }
+      </div>
+    </div>
+  </div>
+}

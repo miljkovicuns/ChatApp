@@ -67,6 +67,9 @@ public class User {
     @Column(name = "role")
     private RoleEnum role;
 
+    @Column(name = "registered")
+    private boolean registered;
+
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
     @JsonIgnore
     private List<MessageReadStatus> readStatuses = new ArrayList<>();

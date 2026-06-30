@@ -1,0 +1,69 @@
+@if (isOpen) {
+  <div class="modal-overlay" (click)="onClose()">
+    <div class="modal-container" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Edit Profile</h2>
+        <button class="close-btn" (click)="onClose()">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="avatar-section">
+          <div class="profile-avatar" (click)="fileInput.click();">
+            @if (profileImagePreview) {
+              <img [src]="profileImagePreview" alt="Profile avatar" class="profile-avatar-image">
+            }
+            @if (!profileImagePreview) {
+              <span>{{ getInitials() }}</span>
+            }
+          </div>
+          <input type="file" #fileInput accept="image/*" style="display: none" (change)="onFileSelected($event)">
+          <button class="change-avatar-btn" (click)="fileInput.click()">Change Avatar</button>
+        </div>
+
+        <form [formGroup]="profileForm" (ngSubmit)="onSubmit()">
+          <div class="form-group">
+            <label>Username *</label>
+            <input formControlName="username" type="text" placeholder="Enter username" />
+            <div class="error" *ngIf="profileForm.get('username')?.invalid && profileForm.get('username')?.touched">
+              Username is required (min 3 characters)
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Email *</label>
+            <input formControlName="email" type="email" placeholder="Enter email" />
+            <div class="error" *ngIf="profileForm.get('email')?.invalid && profileForm.get('email')?.touched">
+              Valid email is required
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>First Name</label>
+              <input formControlName="firstName" type="text" placeholder="First name" />
+            </div>
+            <div class="form-group">
+              <label>Last Name</label>
+              <input formControlName="lastName" type="text" placeholder="Last name" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Phone Number</label>
+            <input formControlName="phoneNumber" type="tel" placeholder="Phone number" />
+          </div>
+
+          <div class="error" *ngIf="error">{{ error }}</div>
+
+          <div class="modal-footer">
+            <button type="button" class="cancel-btn" (click)="onClose()">Cancel</button>
+            <button type="submit" class="save-btn" [disabled]="profileForm.invalid || isUpdating">
+              {{ isUpdating ? 'Saving...' : 'Save Changes' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+}
+

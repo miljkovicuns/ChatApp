@@ -24,11 +24,14 @@ import {DomSanitizer, SafeUrl} from '@angular/platform-browser';
 import {UserFilterParams} from '../../models/user-filter-params';
 import {WebSocketService} from '../../services/web-socket-service';
 import {Message} from '../../models/message';
+import {PasswordModalService} from '../../services/modals/password-modal-service';
+import {ProfileModalComponent} from '../../modals/profile-modal-component/profile-modal-component';
+import {CreateChatModalComponent} from '../../modals/create-chat-modal-component/create-chat-modal-component';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FormsModule],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, ProfileModalComponent, CreateChatModalComponent],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css'
 })
@@ -41,14 +44,37 @@ export class Dashboard implements OnInit,OnDestroy {
   private cdr = inject(ChangeDetectorRef)
   private sanitizer = inject(DomSanitizer)
   private webSocketService = inject(WebSocketService)
+  private passwordModalService = inject(PasswordModalService)
 
   //Profile related properties
   currentUser: any = null
   showProfileModal = false
-  showSettingsModal = false
-  showCreateChatModal = false
   isUpdatingProfile = false
   profileError: string | null = null
+  selectedImageFile: File | null = null
+  profileForm: FormGroup;
+  profileImagePreview: string | SafeUrl | null = null
+
+  //Chat creation properties
+  showCreateChatModal = false
+  createChatStep: 'type' | 'participants' | 'group-details' = 'type';
+  selectedChatType: 'direct' | 'group' = 'direct';
+  availableUsers: User[] = [];
+  selectedParticipants: User[] = [];
+  searchUserQuery = '';
+  isCreatingChat = false;
+  createChatError: string | null = null;
+  groupChatForm: FormGroup
+
+  //User filtering during chat creation
+  showFilterPanel = false;
+  filterByLastSeen: 'all' | 'today' | 'week' | 'month' | 'offline' = 'all';
+  filterByHasImage: 'all' | 'hasImage' | 'noImage' = 'all';
+  sortBy: 'name' | 'lastSeen' | 'recent' = 'name';
+  sortOrder: 'asc' | 'desc' = 'asc';
+
+  showSettingsModal = false
+  isLoadingPM = false
 
   // Chat-related properties
   selectedChat: Chat | null = null;
@@ -58,32 +84,12 @@ export class Dashboard implements OnInit,OnDestroy {
   isLoadingMessages = false;
   isLoadingUsers = false
 
-  //Chat creation properties
-  createChatStep: 'type' | 'participants' | 'group-details' = 'type';
-  selectedChatType: 'direct' | 'group' = 'direct';
-  availableUsers: User[] = [];
-  selectedParticipants: User[] = [];
-  searchUserQuery = '';
-  isCreatingChat = false;
-  createChatError: string | null = null;
 
-  groupChatForm: FormGroup
 
   // Data containers (will be populated from API)
   chats: Chat[] = [];
   messages: any[] = [];
 
-  // Profile form
-  profileForm: FormGroup;
-  selectedImageFile: File | null = null
-  profileImagePreview: string | SafeUrl | null = null
-
-  //User filtering during chat creation
-  showFilterPanel = false;
-  filterByLastSeen: 'all' | 'today' | 'week' | 'month' | 'offline' = 'all';
-  filterByHasImage: 'all' | 'hasImage' | 'noImage' = 'all';
-  sortBy: 'name' | 'lastSeen' | 'recent' = 'name';
-  sortOrder: 'asc' | 'desc' = 'asc';
 
   // Settings
   settings = {
@@ -134,6 +140,7 @@ export class Dashboard implements OnInit,OnDestroy {
   ngOnInit() {
     this.loadCurrentUser()
     this.startHeartbeat()
+    this.profileImagePreview = this.getUserAvatar(this.currentUser)
 
     this.webSocketService.connect();
 
@@ -421,22 +428,6 @@ export class Dashboard implements OnInit,OnDestroy {
     this.authService.logout();
   }
 
-  openCreateChatModal() {
-    this.showCreateChatModal = true;
-    this.createChatStep = 'type';
-    this.selectedChatType = 'direct';
-    this.selectedParticipants = [];
-    this.searchUserQuery = '';
-    this.createChatError = null;
-    this.groupChatForm.reset();
-  }
-
-  closeCreateChatModal() {
-    this.showCreateChatModal = false;
-    this.isCreatingChat = false;
-    this.createChatError = null;
-  }
-
   selectChat(chat: Chat) {
     // ✅ Add null check
     if (!chat || !chat.id) {
@@ -458,103 +449,12 @@ export class Dashboard implements OnInit,OnDestroy {
     }
   }
 
-  toggleParticipantSelection(user: User) {
-    const index = this.selectedParticipants.findIndex(p => p.id === user.id);
-    if (index === -1) {
-      if (this.selectedChatType === 'direct' && this.selectedParticipants.length >= 1) {
-        this.createChatError = 'Direct chat can only have one participant';
-        return;
-      }
-      this.selectedParticipants.push(user);
-      this.createChatError = null;
-    } else {
-      this.selectedParticipants.splice(index, 1);
-    }
-  }
-
-  isParticipantSelected(user: User): boolean {
-    return this.selectedParticipants.some(p => p.id === user.id);
-  }
-
-  proceedToNextStep() {
-    if (this.selectedParticipants.length === 0) {
-      this.createChatError = 'Please select at least one participant';
-      return;
-    }
-
-    if (this.selectedChatType === 'direct') {
-      if (this.selectedParticipants.length !== 1) {
-        this.createChatError = 'Direct chat requires exactly one participant';
-        return;
-      }
-      this.createDirectChat();
-    } else {
-      this.createChatStep = 'group-details';
-    }
-  }
-
-  createDirectChat() {
-    this.isCreatingChat = true;
-    this.createChatError = null;
-
-    const participantIds = this.selectedParticipants.map(p => p.id);
-    participantIds.push(this.currentUser.id);
-
-    this.chatService.createDirectChat(participantIds)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (newChat: Chat) => {
-          this.isCreatingChat = false;
-          this.chats.unshift(newChat);
-          this.cdr.detectChanges();
-          this.closeCreateChatModal();
-        },
-        error: (err) => {
-          this.isCreatingChat = false;
-          this.createChatError = err.error?.message || 'Failed to create chat';
-        }
-      });
-  }
-
   getOtherParticipant(chat: Chat) {
     const user = chat.participants.filter(user => user.id !== this.currentUser.id).at(0)
     if(!user) {
       return null
     }
     return user
-  }
-
-  createGroupChat() {
-    if (this.groupChatForm.invalid) {
-      this.groupChatForm.markAllAsTouched();
-      return;
-    }
-
-    this.isCreatingChat = true;
-    this.createChatError = null;
-
-    const participantIds = this.selectedParticipants.map(p => p.id);
-    participantIds.push(this.currentUser.id);
-
-    const request: CreateGroupChatRequest = {
-      name: this.groupChatForm.get('name')?.value,
-      description: this.groupChatForm.get('description')?.value,
-      participantIds: participantIds
-    };
-
-    this.chatService.createGroupChat(request)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (newChat: Chat) => {
-          this.isCreatingChat = false;
-          this.chats.unshift(newChat);
-          this.closeCreateChatModal();
-        },
-        error: (err) => {
-          this.isCreatingChat = false;
-          this.createChatError = err.error?.message || 'Failed to create group chat';
-        }
-      });
   }
 
   goBack() {
@@ -612,17 +512,6 @@ export class Dashboard implements OnInit,OnDestroy {
     } else {
       return messageDate.toLocaleDateString();
     }
-  }
-
-  openProfileModal() {
-    this.showProfileModal = true;
-    this.profileError = null;
-  }
-
-  closeProfileModal() {
-    this.showProfileModal = false;
-    this.profileForm.reset();
-    this.loadCurrentUser(); // Reset form data
   }
 
   openSettingsModal() {
@@ -941,5 +830,251 @@ export class Dashboard implements OnInit,OnDestroy {
     } else {
       return messageDate.toLocaleDateString();
     }
+  }
+
+  // Modal methods
+  //Profile Modal
+  openProfileModal() {
+    this.showProfileModal = true;
+    console.log("Open profile modal")
+    this.profileError = null;
+    this.profileImagePreview = this.getUserAvatar(this.currentUser);
+    this.profileForm.patchValue({
+      username: this.currentUser?.username || '',
+      email: this.currentUser?.email || '',
+      firstName: this.currentUser?.firstName || '',
+      lastName: this.currentUser?.lastName || '',
+      phoneNumber: this.currentUser?.phoneNumber || ''
+    });
+  }
+
+  closeProfileModal() {
+    this.showProfileModal = false;
+    this.selectedImageFile = null;
+  }
+
+  onProfileSave(data: { formData: any, file: File | null }) {
+    this.isUpdatingProfile = true;
+    this.profileError = null;
+
+    if (data.file) {
+      this.selectedImageFile = data.file;
+    }
+
+    this.userService.updateProfile(data.formData, this.selectedImageFile!)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (response: Map<string, any>) => {
+          this.isUpdatingProfile = false;
+          this.currentUser = { ...this.currentUser, ...data.formData };
+          // @ts-ignore
+          localStorage.setItem('auth_token', response['accessToken']);
+          // @ts-ignore
+          localStorage.setItem('user', JSON.stringify(response['user']));
+          this.closeProfileModal();
+          this.cdr.detectChanges();
+        },
+        error: (err) => {
+          this.isUpdatingProfile = false;
+          this.profileError = 'Failed to update profile: ' + err.error?.message;
+        }
+      });
+  }
+
+  onProfileFileSelected(file: File) {
+    this.selectedImageFile = file;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      this.profileImagePreview = this.sanitizer.bypassSecurityTrustUrl(e.target?.result as string);
+      this.cdr.detectChanges();
+    };
+    reader.readAsDataURL(file);
+  }
+
+  //Change Password Modal
+  async changePassword() {
+    try {
+      const result = await this.passwordModalService.changePassword({
+        userId: this.currentUser.id,
+        username: this.currentUser.username,
+        requiresCurrentPassword: true
+      });
+
+      if (result) {
+        this.isLoadingPM = true;
+
+        // Fix: Subscribe to the Observable instead of using .toPromise()
+        this.userService.changePassword(result).subscribe({
+          next: (response) => {
+            this.isLoadingPM = false;
+            this.showSuccess('Password updated successfully!');
+            console.log('Password update response:', response);
+          },
+          error: (error) => {
+            this.isLoadingPM = false;
+            this.showError('Failed to update password. Please try again.');
+            console.error('Password update error:', error);
+          }
+        });
+      }
+    } catch (error) {
+      this.isLoadingPM = false;
+      this.showError('Failed to update password. Please try again.');
+      console.error('Password update error:', error);
+    }
+  }
+
+  showSuccess(message: string) {
+    // Implement toast/notification
+    console.log('Success:', message);
+  }
+
+  showError(message: string) {
+    // Implement toast/notification
+    console.error('Error:', message);
+  }
+
+  //Create Chat Modal
+  openCreateChatModal() {
+    this.showCreateChatModal = true;
+    this.createChatStep = 'type';
+    this.selectedChatType = 'direct';
+    this.selectedParticipants = [];
+    this.searchUserQuery = '';
+    this.createChatError = null;
+    this.groupChatForm.reset();
+    this.loadAvailableUsers();
+  }
+
+  closeCreateChatModal() {
+    this.showCreateChatModal = false;
+    this.isCreatingChat = false;
+    this.createChatError = null;
+  }
+
+  // Event handlers for CreateChatModal
+  onChatTypeSelected(type: 'direct' | 'group') {
+    this.selectedChatType = type;
+    this.selectedParticipants = [];
+    this.createChatError = null;
+  }
+
+  onChatBack() {
+    if (this.createChatStep === 'participants') {
+      this.createChatStep = 'type';
+      this.selectedParticipants = [];
+    } else if (this.createChatStep === 'group-details') {
+      this.createChatStep = 'participants';
+    }
+  }
+
+  onChatProceed(event: { type: 'direct' | 'group', participants: User[] }) {
+    this.selectedParticipants = event.participants;
+
+    if (this.selectedParticipants.length === 0) {
+      this.createChatError = 'Please select at least one participant';
+      return;
+    }
+
+    if (event.type === 'direct') {
+      if (this.selectedParticipants.length !== 1) {
+        this.createChatError = 'Direct chat requires exactly one participant';
+        return;
+      }
+      this.createDirectChat();
+    } else {
+      this.createChatStep = 'group-details';
+    }
+  }
+
+  onGroupChatSubmit(event: { formData: any, participants: User[] }) {
+    this.selectedParticipants = event.participants;
+    if (this.groupChatForm.invalid) {
+      this.groupChatForm.markAllAsTouched();
+      return;
+    }
+    this.createGroupChat();
+  }
+
+  createDirectChat() {
+    this.isCreatingChat = true;
+    this.createChatError = null;
+
+    const participantIds = this.selectedParticipants.map(p => p.id);
+    participantIds.push(this.currentUser.id);
+
+    this.chatService.createDirectChat(participantIds)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (newChat: Chat) => {
+          this.isCreatingChat = false;
+          this.chats.unshift(newChat);
+          this.cdr.detectChanges();
+          this.closeCreateChatModal();
+        },
+        error: (err) => {
+          this.isCreatingChat = false;
+          this.createChatError = err.error?.message || 'Failed to create chat';
+        }
+      });
+  }
+
+  // Update createGroupChat to use selectedParticipants
+  createGroupChat() {
+    this.isCreatingChat = true;
+    this.createChatError = null;
+
+    const participantIds = this.selectedParticipants.map(p => p.id);
+    participantIds.push(this.currentUser.id);
+
+    const request: CreateGroupChatRequest = {
+      name: this.groupChatForm.get('name')?.value,
+      description: this.groupChatForm.get('description')?.value,
+      participantIds: participantIds
+    };
+
+    this.chatService.createGroupChat(request)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (newChat: Chat) => {
+          this.isCreatingChat = false;
+          this.chats.unshift(newChat);
+          this.closeCreateChatModal();
+        },
+        error: (err) => {
+          this.isCreatingChat = false;
+          this.createChatError = err.error?.message || 'Failed to create group chat';
+        }
+      });
+  }
+
+  onParticipantToggled(user: User) {
+    // Logic is handled in the component, we just need to update the parent
+    // The selectedParticipants is managed in the child component
+  }
+
+  onFiltersChanged(params: UserFilterParams) {
+    this.filterParams = params;
+    this.loadAvailableUsers();
+  }
+
+  onFilterPanelToggled() {
+    // Just toggle, handled in child
+  }
+
+  onFiltersReset() {
+    this.filterParams = {
+      lastSeen: 'all',
+      hasImage: 'all',
+      sortBy: 'name',
+      sortOrder: 'asc'
+    };
+    this.searchUserQuery = '';
+    this.loadAvailableUsers();
+  }
+
+  onSearchChanged(query: string) {
+    this.searchUserQuery = query;
+    this.loadAvailableUsers();
   }
 }

@@ -69,6 +69,15 @@ export class UserService {
     return this.http.patch<Map<string,any>>(`${this.apiUrl}/me`, formData)
   }
 
-  changePassword(oldPassword: string,newPassword: string) {
+  changePassword(passwordData: {
+    userId: string;
+    currentPassword: string;
+    newPassword: string;
+  }): Observable<any> {
+    let formData = new FormData()
+    formData.append("oldPassword", passwordData.currentPassword)
+    formData.append("newPassword", passwordData.newPassword)
+
+    return this.http.post(`${this.apiUrl}/me/password`, formData);
   }
 }
