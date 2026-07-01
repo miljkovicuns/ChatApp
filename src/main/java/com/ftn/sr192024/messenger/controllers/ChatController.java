@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -36,14 +37,14 @@ public class ChatController {
     }
 
     @PostMapping("/direct")
-    public ResponseEntity<Chat> createDirectChat(@RequestBody Map<String, List<UUID>> request) {
+    public ResponseEntity<Chat> createDirectChat(@RequestBody Map<String, List<UUID>> request) throws IOException {
         List<UUID> participantIds = request.get("participantIds");
         Chat chat = chatService.createDirectChat(participantIds);
         return ResponseEntity.ok(chat);
     }
 
     @PostMapping("/group")
-    public ResponseEntity<Chat> createGroupChat(@RequestBody GroupChatRequest request) {
+    public ResponseEntity<Chat> createGroupChat(@RequestBody GroupChatRequest request) throws IOException {
         Chat chat = chatService.createGroupChat(
                 request.getName(),
                 request.getDescription(),

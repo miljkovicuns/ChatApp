@@ -37,7 +37,7 @@ public class MessageService {
 
         // ✅ Create and save message
         Message message = new Message();
-        User sender = userService.findById(sendMessageDto.getSenderId());
+        User sender = userService.findById(sendMessageDto.getSenderId()).orElse(null);
         Chat chat = chatUpdateService.findChatById(sendMessageDto.getChatId());
         message.setChat(chat);
         message.setSender(sender);
@@ -45,7 +45,10 @@ public class MessageService {
         message.setDateOfSending(LocalDateTime.now());
         List<MessageReadStatus> statuses = new ArrayList<>();
         if(chat.isGroupChat()) {
-            List<User> participants = chat.getParticipants().stream().filter(user -> user.getId() != sender.getId()).toList();
+            List<User> participants = chat.getParticipants().stream().filter(user -> {
+                assert sender != null;
+                return user.getId() != sender.getId();
+            }).toList();
             for(User participant : participants) {
 
                 MessageReadStatus status = new MessageReadStatus();
@@ -55,7 +58,10 @@ public class MessageService {
 
             }
         }else{
-            User participant = chat.getParticipants().stream().filter(user -> user.getId() != sender.getId()).toList().get(0);
+            User participant = chat.getParticipants().stream().filter(user -> {
+                assert sender != null;
+                return user.getId() != sender.getId();
+            }).toList().get(0);
             MessageReadStatus status = new MessageReadStatus();
             status.setUser(participant);
             status.setMessage(message);

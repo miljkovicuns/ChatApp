@@ -9,12 +9,14 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, UUID> {
-    Optional<User> findByUsername(String username);
+    Optional<User> findByUsernameAndRegisteredIsTrue(String username);
 
     @Query("SELECT u FROM User u WHERE u.id != :currentUserId " +
             "AND (:searchQuery IS NULL OR " +
@@ -32,5 +34,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     @Query("UPDATE User u SET u.passwordHash = :password WHERE u.id = :userId")
     void updatePassword(@Param("password") String password,@Param("userId") UUID userId);
 
-    Optional<User> findUserById(UUID id);
+    Optional<User> findUserByIdAndRegisteredIsTrue(UUID id);
+
+    Optional<List<User>> findByIdInAndRegistered(Collection<UUID> id, boolean registered);
 }

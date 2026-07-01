@@ -1,5 +1,6 @@
 package com.ftn.sr192024.messenger.security;
 
+import com.ftn.sr192024.messenger.models.RoleEnum;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.AllArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -36,6 +37,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/ws").permitAll()
+                        .requestMatchers("/admin").hasAuthority("ROLE_" + RoleEnum.ADMIN)
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(exceptions -> exceptions

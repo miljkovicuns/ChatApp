@@ -6,6 +6,7 @@ import {HttpParams} from '@angular/common/http';
 import {UserFilterParams} from '../models/user-filter-params';
 import {UpdateProfileRequest} from '../models/update-profile-request';
 import {Dashboard} from '../pages/dashboard/dashboard';
+import {RegistrationRequest} from '../models/registration-request';
 
 @Service()
 export class UserService {

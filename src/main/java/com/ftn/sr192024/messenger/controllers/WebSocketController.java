@@ -2,6 +2,7 @@ package com.ftn.sr192024.messenger.controllers;
 
 import com.ftn.sr192024.messenger.models.Message;
 import com.ftn.sr192024.messenger.models.ReadEnum;
+import com.ftn.sr192024.messenger.models.User;
 import com.ftn.sr192024.messenger.models.dto.SendMessageDto;
 import com.ftn.sr192024.messenger.models.dto.WebSocketMessage;
 import com.ftn.sr192024.messenger.services.MessageService;
@@ -71,7 +72,9 @@ public class WebSocketController {
     @MessageMapping("/chat.markRead")
     public void markMessagesAsRead(@Payload MarkReadRequest request, Principal principal) {
         String username = principal.getName();
-        UUID userId = userService.findByUsername(username).getId();
+        User user = userService.findByUsername(username).orElse(null);
+        assert user != null;
+        UUID userId = user.getId();
         messageService.markMessagesAsRead(request.getChatId(), userId);
 
         // ✅ Update unread count for all users in the chat
@@ -94,7 +97,9 @@ public class WebSocketController {
     @MessageMapping("/chat.typing")
     public void handleTyping(@Payload TypingRequest request, Principal principal) {
         String username = principal.getName();
-        UUID userId = userService.findByUsername(username).getId();
+        User user = userService.findByUsername(username).orElse(null);
+        assert user != null;
+        UUID userId = user.getId();
 
         messagingTemplate.convertAndSend(
                 "/topic/chat/" + request.getChatId() + "/typing",

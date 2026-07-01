@@ -49,8 +49,6 @@ public class User {
     @Column(name = "email", nullable = false, unique = true)
     private String email;
 
-    @Lob
-    @Column(name = "profile_image", columnDefinition = "LONGBLOB")
     private byte[] image;
 
     @CreationTimestamp

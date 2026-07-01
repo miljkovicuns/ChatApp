@@ -1,0 +1,212 @@
+<div class="review-container">
+  <!-- Top Bar Component -->
+  <app-top-bar
+    [currentUser]="currentUser"
+    logoText="📋 Registration Review"
+    badgeText="Pending Reviews"
+    [customButtons]="customButtons"
+    (onRefresh)="refreshRequests()"
+    (onSettings)="openSettings()"
+    (onLogout)="logout()"
+  ></app-top-bar>
+
+  <!-- Stats Summary -->
+  <div class="stats-row">
+    <div class="stat-item">
+      <i class="fas fa-users"></i>
+      <span class="stat-label">Total Requests</span>
+      <span class="stat-value">{{ totalRequests }}</span>
+    </div>
+    <div class="stat-item">
+      <i class="fas fa-hourglass-half"></i>
+      <span class="stat-label">Pending</span>
+      <span class="stat-value pending-count">{{ pendingRequests }}</span>
+    </div>
+    <div class="stat-item">
+      <i class="fas fa-check-circle" style="color: #22c55e;"></i>
+      <span class="stat-label">Approved</span>
+      <span class="stat-value" style="color: #22c55e;">{{ approvedRequests }}</span>
+    </div>
+    <div class="stat-item">
+      <i class="fas fa-times-circle" style="color: #ef4444;"></i>
+      <span class="stat-label">Rejected</span>
+      <span class="stat-value" style="color: #ef4444;">{{ rejectedRequests }}</span>
+    </div>
+    <div class="stat-item">
+      <i class="fas fa-calendar-day"></i>
+      <span class="stat-label">Today</span>
+      <span class="stat-value">{{ todayRequests }}</span>
+    </div>
+  </div>
+
+  <!-- Main Grid -->
+  <div class="review-grid">
+    <!-- Left Panel: Request List -->
+    <div class="request-list-panel">
+      <div class="list-header">
+        <h3>
+          <i class="fas fa-list-ul"></i> Registration Requests
+          <span>{{ requests.length }}</span>
+        </h3>
+        <!-- <div class="search-filter">
+          <i class="fas fa-search"></i>
+          <input
+            type="text"
+            placeholder="Search by name or email..."
+            [(ngModel)]="searchQuery"
+            (input)="filterRequests()"
+          />
+          @if (searchQuery) {
+            <button class="clear-search" (click)="clearSearch()">
+              <i class="fas fa-times-circle"></i>
+            </button>
+          }
+        </div> -->
+      </div>
+
+      <!-- Request List -->
+      <div class="request-list">
+        @if (isLoading) {
+          <div class="loading-state">
+            <div class="spinner"></div>
+            <p>Loading requests...</p>
+          </div>
+        } @else if (filteredRequests.length === 0) {
+          <div class="empty-state">
+            <i class="fas fa-inbox"></i>
+            <p>No registration requests found</p>
+            <span class="empty-hint">New user registrations will appear here</span>
+          </div>
+        } @else {
+          @for (request of filteredRequests; track request.id) {
+            <div
+              class="request-item"
+              [class.active]="selectedRequest?.id === request.id"
+              [class.pending]="!request.processedAt"
+              (click)="selectRequest(request)"
+            >
+              <div class="avatar">
+                @if (request.user?.profileImage) {
+                  <img [src]="request.user.profileImage" [alt]="request.user.username" class="avatar-image-small">
+                } @else {
+                  <span>{{ (request.user?.username?.charAt(0) || '?') | uppercase }}</span>
+                }
+              </div>
+
+              <div class="info">
+                <div class="name">
+                  {{ selectedRequest?.user?.firstName + " " + selectedRequest?.user?.lastName || request.user?.username || 'Unknown User' }}
+                  @if (!request.processedAt) {
+                    <span class="badge-new">New</span>
+                  }
+                </div>
+                <div class="sub">
+                  <span><i class="fas fa-envelope"></i> {{ request.user?.email || 'No email' }}</span>
+                  <span><i class="fas fa-user-tag"></i> {{ request.user?.role || 'User' }}</span>
+                </div>
+              </div>
+
+              <div class="status-badge" [class]="request.status">
+                {{ request.status }}
+              </div>
+
+              <div class="time">
+                <i class="fas fa-clock"></i>
+                {{ request.sentAt | date:'MMM d, h:mm a' }}
+              </div>
+            </div>
+          }
+        }
+      </div>
+    </div>
+
+    <!-- Right Panel: Request Detail -->
+    <div class="detail-panel">
+      @if (!selectedRequest) {
+        <div class="detail-empty">
+          <i class="fas fa-address-card"></i>
+          <h3>Select a registration request</h3>
+          <p>Choose a request from the list to review details</p>
+        </div>
+      } @else {
+        <div class="detail-header">
+          <div class="detail-user">
+            <div class="detail-avatar">
+              @if (selectedRequest.user?.profileImage) {
+                <img [src]="selectedRequest.user.profileImage" [alt]="selectedRequest.user.username" class="avatar-image-large">
+              } @else {
+                <span>{{ (selectedRequest.user?.username?.charAt(0) || '?') | uppercase }}</span>
+              }
+            </div>
+            <div class="name-box">
+              <h2>{{ selectedRequest.user?.firstName + " " +selectedRequest.user?.lastName || selectedRequest.user?.username || 'Unknown User' }}</h2>
+              <div class="username">&#64;{{ selectedRequest.user?.username || 'unknown' }}</div>
+            </div>
+          </div>
+          <div class="detail-actions">
+            <span class="status-badge large" [class]="selectedRequest.status">
+              {{ selectedRequest.status }}
+            </span>
+          </div>
+        </div>
+
+        <!-- User Information -->
+        <div class="detail-body">
+          <div class="info-grid">
+            <div class="info-item">
+              <label><i class="fas fa-envelope"></i> Email</label>
+              <p>{{ selectedRequest.user?.email || 'Not provided' }}</p>
+            </div>
+            <div class="info-item">
+              <label><i class="fas fa-phone"></i> Phone</label>
+              <p>{{ selectedRequest.user?.phoneNumber || 'Not provided' }}</p>
+            </div>
+            <div class="info-item">
+              <label><i class="fas fa-user-tag"></i> Role</label>
+              <p><span class="role-badge">{{ selectedRequest.user?.role || 'User' }}</span></p>
+            </div>
+            <div class="info-item">
+              <label><i class="fas fa-calendar-plus"></i> Requested</label>
+              <p>{{ selectedRequest.sentAt | date:'full' }}</p>
+            </div>
+            @if (selectedRequest.processedAt) {
+              <div class="info-item">
+                <label><i class="fas fa-check-circle"></i> Processed</label>
+                <p>{{ selectedRequest.processedAt | date:'full' }}</p>
+              </div>
+            }
+            <div class="info-item full-width">
+              <label><i class="fas fa-info-circle"></i> User ID</label>
+              <p class="mono">{{ selectedRequest.user?.id || selectedRequest.id }}</p>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="action-buttons-row">
+            @if (!selectedRequest.processedAt) {
+              <button class="btn-approve" (click)="approveRequest(selectedRequest)" [disabled]="isProcessing">
+                <i class="fas fa-check-circle"></i> Approve
+              </button>
+              <button class="btn-reject" (click)="rejectRequest(selectedRequest)" [disabled]="isProcessing">
+                <i class="fas fa-times-circle"></i> Reject
+              </button>
+            } @else {
+              <div class="processed-info">
+                <i class="fas fa-check-circle" style="color: #22c55e;"></i>
+                <span>This request has been {{ selectedRequest.status.toLowerCase() }}</span>
+              </div>
+            }
+          </div>
+
+          <!-- Error Message -->
+          @if (actionError) {
+            <div class="error-message">
+              <i class="fas fa-exclamation-circle"></i>
+              {{ actionError }}
+            </div>
+          }
+        </div>
+      }
+    </div>
+  </div>
+</div>

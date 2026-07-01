@@ -25,8 +25,8 @@ public class RegistrationRequest {
     @JoinColumn(name = "user", nullable = false)
     private User user;
 
-    @Column(name = "accepted")
-    private boolean accepted;
+    @Column(name = "status")
+    private RegistrationStatus status;
 
     @CreationTimestamp
     @Column(name = "sent_at")

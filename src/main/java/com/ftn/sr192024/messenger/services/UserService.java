@@ -1,12 +1,15 @@
 package com.ftn.sr192024.messenger.services;
 
 import com.ftn.sr192024.messenger.models.RegistrationRequest;
+import com.ftn.sr192024.messenger.models.RegistrationStatus;
 import com.ftn.sr192024.messenger.models.User;
 import com.ftn.sr192024.messenger.models.dto.FilterUserRequest;
 import com.ftn.sr192024.messenger.models.dto.ProfileUpdateRequest;
 import com.ftn.sr192024.messenger.models.dto.UserResponseDTO;
+import com.ftn.sr192024.messenger.repository.LocalImageRepo;
 import com.ftn.sr192024.messenger.repository.RegisterRequestRepository;
 import com.ftn.sr192024.messenger.repository.UserRepository;
+import com.ftn.sr192024.messenger.security.CustomUserDetails;
 import com.ftn.sr192024.messenger.security.JWTService;
 import com.ftn.sr192024.messenger.security.SecurityConfig;
 import com.ftn.sr192024.messenger.security.SecurityUtils;
@@ -29,7 +32,7 @@ public class UserService {
 
     private final UserRepository userRepository;
 
-    private final UserDetailsServiceImpl userDetailsService;
+    private final LocalImageRepo localImageRepo;
 
     private final JWTService jwtService;
 
@@ -38,18 +41,38 @@ public class UserService {
     private final RegisterRequestRepository requestRepository;
 
     public List<User> findAllByIds(List<UUID> userIds) {
+        List<User> users = userRepository.findByIdInAndRegistered(userIds,true).orElse(null);
+        assert users != null;
+        for (User user : users) {
+            if (user.getImage() == null || user.getImage().length == 0) {
+                    user.setImage(localImageRepo.getImage(user.getId()));
+            }
+        }
         return userRepository.findAllById(userIds);
     }
 
-    public User findById(UUID id) {
-        return userRepository.findById(id).orElse(null);
+    public Optional<User> findById(UUID id) {
+        User user = userRepository.findUserByIdAndRegisteredIsTrue(id).orElse(null);
+        assert user != null;
+        if (user.getImage() == null || user.getImage().length == 0) {
+                user.setImage(localImageRepo.getImage(user.getId()));
+        }
+        return Optional.of(user);
     }
 
     public List<User> findAll(){
-        return userRepository.findAll();
+        List<User> users = userRepository.findAll();
+        for (User user : users) {
+            if (user.getImage() == null || user.getImage().length == 0) {
+                user.setImage(localImageRepo.getImage(user.getId()));
+            }
+        }
+        return users;
     }
 
     public void save(User user) {
+        localImageRepo.saveImage(user.getImage(),user.getId());
+        user.setImage(null);
         userRepository.save(user);
     }
 
@@ -140,8 +163,13 @@ public class UserService {
         return user.getLastOnline().isAfter(LocalDateTime.now().minusMinutes(5));
     }
 
-    public User findByUsername(String username) {
-        return userRepository.findByUsername(username).orElse(null);
+    public Optional<User> findByUsername(String username) {
+        User user = userRepository.findByUsernameAndRegisteredIsTrue(username).orElse(null);
+
+        assert user != null;
+        user.setImage(localImageRepo.getImage(user.getId()));
+
+        return Optional.of(user);
     }
 
     @Transactional
@@ -158,15 +186,15 @@ public class UserService {
 
         Optional.ofNullable(request.getPhoneNumber()).ifPresent(user::setPhoneNumber);
 
-        if (image != null) {
-            user.setImage(image.getBytes());
-        }
-
         user.setUpdatedAt(LocalDateTime.now());
 
         User savedUser = userRepository.save(user);
 
-        UserDetails userDetails = userDetailsService.loadUserByUsername(savedUser.getUsername());
+        savedUser.setImage(image.getBytes());
+
+        localImageRepo.saveImage(image.getBytes(),savedUser.getId());
+
+        UserDetails userDetails = new CustomUserDetails(savedUser);
         String jwtToken = jwtService.generateToken(userDetails);
 
         Map<String, Object> response = new HashMap<>();
@@ -189,4 +217,20 @@ public class UserService {
         return requestRepository.findAll();
     }
 
+    public RegistrationRequest acceptRequest(UUID id) {
+        RegistrationRequest request = requestRepository.findById(id).orElse(null);
+        assert request != null;
+        request.setStatus(RegistrationStatus.ACCEPTED);
+        User user = request.getUser();
+        user.setRegistered(true);
+        save(user);
+        return requestRepository.save(request);
+    }
+
+    public RegistrationRequest rejectRequest(UUID id) {
+        RegistrationRequest request = requestRepository.findById(id).orElse(null);
+        assert request != null;
+        request.setStatus(RegistrationStatus.REJECTED);
+        return requestRepository.save(request);
+    }
 }

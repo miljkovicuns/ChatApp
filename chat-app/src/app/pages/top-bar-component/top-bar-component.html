@@ -1,0 +1,44 @@
+<div class="top-bar">
+  <div class="logo-section">
+    <h1 class="logo">{{ logoText }}</h1>
+    @if (badgeText) {
+      <span class="badge-pending">
+            <i class="fas fa-clock"></i> {{ badgeText }}
+          </span>
+    }
+  </div>
+
+  <div class="user-section">
+    <div class="user-info">
+      <div class="user-avatar-small">
+        @if (currentUser?.profileImage) {
+          <img [src]="currentUser?.profileImage" [alt]="currentUser?.username" class="avatar-image">
+        } @else {
+          <span>{{ (currentUser?.username?.charAt(0) || 'A') | uppercase }}</span>
+        }
+      </div>
+      <span class="username">{{ currentUser?.username || 'Admin' }}</span>
+    </div>
+
+    <div class="action-buttons">
+      @for (button of customButtons; track button.id) {
+        <button
+          class="icon-btn"
+          (click)="button.action()"
+          [title]="button.title"
+        >
+          <i [class]="button.icon"></i>
+        </button>
+      }
+      <button class="icon-btn" (click)="onRefresh.emit()" title="Refresh">
+        <i class="fas fa-sync-alt"></i>
+      </button>
+      <button class="icon-btn" (click)="onSettings.emit()" title="Settings">
+        <i class="fas fa-cog"></i>
+      </button>
+      <button class="logout-btn" (click)="onLogout.emit()" title="Logout">
+        <i class="fas fa-sign-out-alt"></i> Logout
+      </button>
+    </div>
+  </div>
+</div>
