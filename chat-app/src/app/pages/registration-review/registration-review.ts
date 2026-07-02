@@ -6,6 +6,8 @@ import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {DatePipe, UpperCasePipe} from '@angular/common';
 import {User} from '../../models/user';
 import {TopBarComponent} from '../top-bar-component/top-bar-component';
+import {Router} from '@angular/router';
+import {Auth} from '../../services/auth';
 
 @Component({
   selector: 'app-registration-review',
@@ -24,6 +26,8 @@ export class RegistrationReview implements OnInit{
   private destroyRef = inject(DestroyRef)
   private cdr = inject(ChangeDetectorRef)
   private userService = inject(UserService)
+  private authService = inject(Auth)
+  private router = inject(Router)
 
   currentUser: User | null = null;
   requests: RegistrationRequest[]  = []
@@ -182,22 +186,20 @@ export class RegistrationReview implements OnInit{
   }
 
   logout() {
-    this.userService.logout();
-    // Navigate to login page
+    this.authService.logout()
   }
 
   // Top bar custom buttons
   customButtons = [
     {
       id: 'dashboard',
-      icon: 'fas fa-home',
+      icon: '⬅️',
       title: 'Dashboard',
       action: () => this.goToDashboard()
     }
   ];
 
   goToDashboard() {
-    // Navigate to dashboard
-    console.log('Navigate to dashboard');
+    this.router.navigate(["dashboard"])
   }
 }

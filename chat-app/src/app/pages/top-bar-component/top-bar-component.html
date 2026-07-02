@@ -26,18 +26,18 @@
           class="icon-btn"
           (click)="button.action()"
           [title]="button.title"
+          [textContent]="button.icon"
         >
-          <i [class]="button.icon"></i>
         </button>
       }
       <button class="icon-btn" (click)="onRefresh.emit()" title="Refresh">
-        <i class="fas fa-sync-alt"></i>
+        🔄
       </button>
       <button class="icon-btn" (click)="onSettings.emit()" title="Settings">
-        <i class="fas fa-cog"></i>
+        ⚙️
       </button>
       <button class="logout-btn" (click)="onLogout.emit()" title="Logout">
-        <i class="fas fa-sign-out-alt"></i> Logout
+        🚪 Logout
       </button>
     </div>
   </div>

@@ -27,6 +27,7 @@ import {Message} from '../../models/message';
 import {PasswordModalService} from '../../services/modals/password-modal-service';
 import {ProfileModalComponent} from '../../modals/profile-modal-component/profile-modal-component';
 import {CreateChatModalComponent} from '../../modals/create-chat-modal-component/create-chat-modal-component';
+import {Router} from '@angular/router';
 
 @Component({
   selector: 'app-dashboard',
@@ -45,6 +46,7 @@ export class Dashboard implements OnInit,OnDestroy {
   private sanitizer = inject(DomSanitizer)
   private webSocketService = inject(WebSocketService)
   private passwordModalService = inject(PasswordModalService)
+  private router = inject(Router)
 
   //Profile related properties
   currentUser: any = null
@@ -54,6 +56,8 @@ export class Dashboard implements OnInit,OnDestroy {
   selectedImageFile: File | null = null
   profileForm: FormGroup;
   profileImagePreview: string | SafeUrl | null = null
+
+  protected pendingRegistrationCount: number = 0
 
   //Chat creation properties
   showCreateChatModal = false
@@ -1076,5 +1080,9 @@ export class Dashboard implements OnInit,OnDestroy {
   onSearchChanged(query: string) {
     this.searchUserQuery = query;
     this.loadAvailableUsers();
+  }
+
+  protected goToRegistrationReview() {
+    this.router.navigate(['/admin/registration-review'])
   }
 }

@@ -1526,3 +1526,129 @@ textarea:focus {
 .own-message .message-status.read {
   color: #66bb6a;
 }
+
+/* Add to your existing dashboard.css */
+
+/* Admin Badge */
+.admin-badge {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: 12px;
+  margin-left: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+/* Admin Button */
+.admin-btn {
+  background: linear-gradient(135deg, #667eea, #764ba2) !important;
+  color: white !important;
+}
+
+.admin-btn:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4) !important;
+}
+
+.admin-btn i {
+  color: white;
+}
+
+/* Admin Quick Access Section */
+.admin-quick-access {
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #f8f9ff, #eef2ff);
+  border-bottom: 2px solid #667eea;
+  margin-bottom: 4px;
+}
+
+.admin-section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #4a5568;
+  margin-bottom: 12px;
+}
+
+.admin-section-header i {
+  color: #667eea;
+  font-size: 16px;
+}
+
+.admin-quick-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  margin-bottom: 6px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: #2d3748;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.admin-quick-btn:last-child {
+  margin-bottom: 0;
+}
+
+.admin-quick-btn:hover {
+  background: #f7fafc;
+  border-color: #667eea;
+  transform: translateX(4px);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
+}
+
+.admin-quick-btn i {
+  font-size: 16px;
+  color: #667eea;
+  width: 20px;
+  text-align: center;
+}
+
+.pending-badge {
+  background: #ef4444;
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-left: auto;
+  animation: pulse-badge 2s infinite;
+}
+
+@keyframes pulse-badge {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+/* Responsive adjustments for admin section */
+@media (max-width: 768px) {
+  .admin-quick-access {
+    padding: 12px 16px;
+  }
+
+  .admin-quick-btn {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+
+  .admin-badge {
+    font-size: 8px;
+    padding: 1px 8px;
+  }
+}
