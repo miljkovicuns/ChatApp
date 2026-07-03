@@ -71,14 +71,14 @@
             <div class="spinner"></div>
             <p>Loading requests...</p>
           </div>
-        } @else if (filteredRequests.length === 0) {
+        } @else if (requests.length === 0) {
           <div class="empty-state">
             <i class="fas fa-inbox"></i>
             <p>No registration requests found</p>
             <span class="empty-hint">New user registrations will appear here</span>
           </div>
         } @else {
-          @for (request of filteredRequests; track request.id) {
+          @for (request of requests; track request.id) {
             <div
               class="request-item"
               [class.active]="selectedRequest?.id === request.id"
@@ -95,7 +95,7 @@
 
               <div class="info">
                 <div class="name">
-                  {{ selectedRequest?.user?.firstName + " " + selectedRequest?.user?.lastName || request.user?.username || 'Unknown User' }}
+                  {{ selectedRequest?.user?.firstName || request.user?.username || 'Unknown User' }}
                   @if (!request.processedAt) {
                     <span class="badge-new">New</span>
                   }
@@ -183,7 +183,7 @@
 
           <!-- Action Buttons -->
           <div class="action-buttons-row">
-            @if (!selectedRequest.processedAt) {
+            @if (selectedRequest.status == "PENDING") {
               <button class="btn-approve" (click)="approveRequest(selectedRequest)" [disabled]="isProcessing">
                 <i class="fas fa-check-circle"></i> Approve
               </button>

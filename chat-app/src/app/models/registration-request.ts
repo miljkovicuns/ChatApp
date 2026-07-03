@@ -5,5 +5,5 @@ export interface RegistrationRequest {
   sentAt: Date
   processedAt?: Date
   user: User
-  status: 'pending' | 'accepted' | 'rejected'
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED'
 }

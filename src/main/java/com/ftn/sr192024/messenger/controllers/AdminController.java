@@ -23,13 +23,13 @@ public class AdminController {
     }
 
     @PostMapping("register/request/accept")
-    public ResponseEntity<?> acceptRequest(@RequestPart UUID id) {
+    public ResponseEntity<?> acceptRequest(@RequestBody UUID id) {
         RegistrationRequest savedRequest = userService.acceptRequest(id);
         return ResponseEntity.ok(savedRequest);
     }
 
     @PostMapping("register/request/reject")
-    public ResponseEntity<?> rejectRequest(@RequestPart UUID id) {
+    public ResponseEntity<?> rejectRequest(@RequestBody UUID id) {
         RegistrationRequest savedRequest = userService.rejectRequest(id);
         return ResponseEntity.ok(savedRequest);
     }

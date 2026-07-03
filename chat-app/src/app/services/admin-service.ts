@@ -1,6 +1,6 @@
 import {inject, Service} from '@angular/core';
 import {RegistrationRequest} from '../models/registration-request';
-import {HttpClient} from '@angular/common/http';
+import {HttpClient, HttpHeaders} from '@angular/common/http';
 import {Observable} from 'rxjs';
 
 @Service()
@@ -15,10 +15,12 @@ export class AdminService {
 
 
   approveRequest(id: string): Observable<RegistrationRequest> {
-    return this.http.post<RegistrationRequest>(`${this.apiUrl}/register/request/accept`,id)
+    const headers = new HttpHeaders().set('Content-Type', 'application/json');
+    return this.http.post<RegistrationRequest>(`${this.apiUrl}/register/request/accept`, JSON.stringify(id), {headers})
   }
 
   rejectRequest(id: string) {
-    return this.http.post<RegistrationRequest>(`${this.apiUrl}/register/request/reject`,id)
+    const headers = new HttpHeaders().set('Content-Type', 'application/json');
+    return this.http.post<RegistrationRequest>(`${this.apiUrl}/register/request/reject`, JSON.stringify(id), {headers})
   }
 }

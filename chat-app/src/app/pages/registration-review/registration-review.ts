@@ -71,9 +71,10 @@ export class RegistrationReview implements OnInit{
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({
       next: (requests: RegistrationRequest[]) => {
-        this.requests = requests;
-        this.isLoading = false;
-        this.cdr.detectChanges();
+        this.requests = requests
+        console.log(this.requests.length)
+        this.isLoading = false
+        this.cdr.detectChanges()
       },
       error: (err) => {
         console.error('Error loading requests:', err);
@@ -85,9 +86,9 @@ export class RegistrationReview implements OnInit{
 
   updateStats() {
     this.totalRequests = this.requests.length;
-    this.pendingRequests = this.requests.filter(r => r.status == 'pending').length;
-    this.approvedRequests = this.requests.filter(r => r.status == 'accepted').length;
-    this.rejectedRequests = this.requests.filter(r => r.status == 'rejected').length;
+    this.pendingRequests = this.requests.filter(r => r.status == 'PENDING').length;
+    this.approvedRequests = this.requests.filter(r => r.status == 'ACCEPTED').length;
+    this.rejectedRequests = this.requests.filter(r => r.status == 'REJECTED').length;
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
