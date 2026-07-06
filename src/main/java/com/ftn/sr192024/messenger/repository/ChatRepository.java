@@ -1,9 +1,6 @@
 package com.ftn.sr192024.messenger.repository;
 
 import com.ftn.sr192024.messenger.models.Chat;
-import com.ftn.sr192024.messenger.models.User;
-import lombok.AllArgsConstructor;
-import lombok.NoArgsConstructor;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -11,7 +8,6 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -34,4 +30,7 @@ public interface ChatRepository extends JpaRepository<Chat, UUID> {
     @Query("UPDATE Chat c SET c.lastMessageAt = :lastMessageAt WHERE c.id = :chatId")
     void updateLastMessageAt(@Param("chatId") UUID chatId,
                              @Param("lastMessageAt") LocalDateTime lastMessageAt);
+
+    @Query("SELECT COUNT(c) > 0 FROM Chat c JOIN c.participants p WHERE c.id = :chatId AND p.id = :userId")
+    boolean isUserParticipant(@Param("chatId") UUID chatId, @Param("userId") UUID userId);
 }

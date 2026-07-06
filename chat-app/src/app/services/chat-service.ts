@@ -5,6 +5,7 @@ import {Chat} from '../models/chat';
 import {CreateGroupChatRequest} from '../models/create-group-chat-request';
 import {Message} from '../models/message';
 import {SendMessageRequest} from '../models/send-message-request';
+import {Page} from '../models/page';
 
 @Injectable({
   providedIn: 'root'
@@ -72,5 +73,31 @@ export class ChatService {
 
   getAllUnreadCounts(): Observable<Map<string, number>> {
     return this.http.get<Map<string, number>>(`${this.apiUrl}/unread-counts`);
+  }
+
+  searchMessages(
+    chatId: string,
+    keyword: string,
+    startDate?: string,
+    endDate?: string,
+    page: number = 0,
+    size: number = 20
+  ): Observable<Page<Message>> {
+    let params = new HttpParams()
+      .set('chatId', chatId)
+      .set('page', page.toString())
+      .set('size', size.toString());
+
+    if (keyword && keyword.trim()) {
+      params = params.set('keyword', keyword.trim());
+    }
+    if (startDate) {
+      params = params.set('startDate', startDate);
+    }
+    if (endDate) {
+      params = params.set('endDate', endDate);
+    }
+
+    return this.http.get<Page<Message>>(`${this.apiUrl}/messages/search`, { params });
   }
 }

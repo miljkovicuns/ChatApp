@@ -124,30 +124,111 @@
             }
             @if (selectedChat && !selectedChat.groupChat && !getUserAvatar(getOtherParticipant(selectedChat))) {
               <span>
-                {{ getOtherParticipant(selectedChat)?.username?.toUpperCase()?.charAt(0) || '?' }}
-              </span>
+      {{ getOtherParticipant(selectedChat)?.username?.toUpperCase()?.charAt(0) || '?' }}
+    </span>
             }
           </div>
           <div class="chat-details">
             <h3>{{ getOtherParticipant(selectedChat)?.username }}</h3>
             <span class="online-status" [class.online]="getOtherParticipant(selectedChat)?.online">
-              {{ getOtherParticipant(selectedChat)?.online ? 'Online' : 'Offline' }}
-            </span>
+        {{ getOtherParticipant(selectedChat)?.online ? 'Online' : 'Offline' }}
+      </span>
+          </div>
+        </div>
+
+        <!-- ✅ NEW: Message Search Bar -->
+        <div class="message-search-container">
+          <div class="message-search-wrapper">
+            <span class="search-icon">🔍</span>
+            <input
+              type="text"
+              class="message-search-input"
+              placeholder="Search messages in this chat..."
+              [(ngModel)]="messageSearchQuery"
+              (input)="onMessageSearchInput(messageSearchQuery)"
+              [ngModelOptions]="{standalone: true}"
+            />
+            <button
+              *ngIf="messageSearchQuery"
+              class="clear-search-btn"
+              (click)="exitSearchMode()"
+              title="Clear search"
+            >
+              ✕
+            </button>
+          </div>
+          <!-- Search results counter -->
+          <div class="search-results-info" *ngIf="isSearchMode">
+            <span *ngIf="!isSearchingMessages">Found {{ searchTotalElements }} message(s)</span>
+            <span *ngIf="isSearchingMessages">Searching...</span>
+            <button class="exit-search-btn" (click)="exitSearchMode()">Show all messages</button>
+          </div>
+
+          <!-- ✅ NEW: Toggleable Advanced Filters -->
+          <div class="advanced-filter-toggle" (click)="showAdvancedSearchFilters = !showAdvancedSearchFilters">
+            <span class="toggle-icon">{{ showAdvancedSearchFilters ? '▼' : '▶' }}</span>
+            <span class="toggle-label">Advanced Filters</span>
+            <span class="filter-indicator" *ngIf="searchStartDate || searchEndDate">●</span>
+          </div>
+
+          <div class="advanced-filter-panel" *ngIf="showAdvancedSearchFilters">
+            <div class="filter-row">
+              <label for="startDate">From:</label>
+              <input
+                id="startDate"
+                type="datetime-local"
+                [(ngModel)]="searchStartDate"
+                [ngModelOptions]="{standalone: true}"
+                (change)="onMessageSearchInput(messageSearchQuery)"
+              />
+            </div>
+            <div class="filter-row">
+              <label for="endDate">To:</label>
+              <input
+                id="endDate"
+                type="datetime-local"
+                [(ngModel)]="searchEndDate"
+                [ngModelOptions]="{standalone: true}"
+                (change)="onMessageSearchInput(messageSearchQuery)"
+              />
+            </div>
+            <div class="filter-actions">
+              <button class="clear-filters-btn" (click)="clearDateFilters()">Clear Dates</button>
+            </div>
           </div>
         </div>
       </div>
       <div class="messages-area" #messagesContainer *ngIf="selectedChat; else noChatSelected">
-        @for (message of messages; track message.id) {
-          <div class="message" [class.own-message]="message.isOwn">
+        <!-- ✅ Use currentMessages instead of messages -->
+        @for (message of currentMessages; track message.id) {
+          <div class="message" [class.own-message]="message.own">
             <div class="message-content">
-              <div class="message-text">{{ message.content }}</div>
+              <!-- ✅ Use highlightText pipe/function -->
+              <div class="message-text" [innerHTML]="highlightText(message.content, messageSearchQuery)"></div>
+
+              <!-- Reactions (unchanged) -->
+              @if (getGroupedReactions(message.reactions).length > 0) {
+                <div class="message-reactions">
+                  @for (group of getGroupedReactions(message.reactions); track group.type) {
+                    <button
+                      class="reaction-badge"
+                      [class.reacted]="group.reacted"
+                      (click)="addReaction(message.id, group.type, $event)"
+                      [title]="group.count + ' reaction(s)'">
+                      {{ getReactionEmoji(group.type) }} {{ group.count }}
+                    </button>
+                  }
+                </div>
+              }
+
               <div class="message-footer">
-                @if (message.isOwn) {
-                  <span class="message-time">{{ message.dateOfSending | date:'short' }}</span>
-                } @else {
-                  <span class="message-time" style="color: #000000">{{ message.dateOfSending | date:'short' }}</span>
-                }
-                @if (message.isOwn) {
+                <!-- Timestamp -->
+                <span class="message-time" [style.color]="message.own ? '#ffffff' : '#000000'">
+            {{ message.dateOfSending | date:'short' }}
+          </span>
+
+                <!-- Status (only for own messages) -->
+                @if (message.own) {
                   <span class="message-status" [class]="message.status">
               @if (message.status === 'SENT') {
                 ✓
@@ -158,8 +239,44 @@
               }
             </span>
                 }
+
+                <button class="reaction-trigger" (click)="toggleReactionPicker(message.id, $event)" title="Add reaction">
+                  😊
+                </button>
               </div>
+
+              <!-- Reaction picker (unchanged) -->
+              @if (reactionPickerMessageId === message.id) {
+                <div class="reaction-picker" (click)="$event.stopPropagation()">
+                  @for (type of reactionTypes; track type) {
+                    <button class="reaction-option" (click)="addReaction(message.id, type, $event)">
+                      {{ getReactionEmoji(type) }}
+                    </button>
+                  }
+                </div>
+              }
             </div>
+          </div>
+        }
+
+        <!-- Empty state for search results -->
+        @if (isSearchMode && !isSearchingMessages && searchResults.length === 0) {
+          <div class="no-search-results">
+            <div class="empty-icon">🔍</div>
+            <h4>No messages found</h4>
+            <p>Try a different keyword</p>
+            <button class="clear-search-btn-outline" (click)="exitSearchMode()">
+              Show all messages
+            </button>
+          </div>
+        }
+
+        <!-- Load more button -->
+        @if (isSearchMode && !isSearchingMessages && searchResults.length > 0 && searchCurrentPage < searchTotalPages - 1) {
+          <div class="load-more-container">
+            <button class="load-more-btn" (click)="loadMoreSearchResults()">
+              Load more results
+            </button>
           </div>
         }
       </div>

@@ -23,6 +23,7 @@ export class WebSocketService {
   private typingSubject = new BehaviorSubject<any>(null)
   private deliverySubject = new BehaviorSubject<any>(null);
   private readReceiptSubject = new BehaviorSubject<null>(null);
+  private reactionSubject = new BehaviorSubject<any>(null);
 
   private authService = inject(Auth)
 
@@ -144,7 +145,17 @@ export class WebSocketService {
       } catch (error) {
         console.error('Error parsing typing indicator:', error);
       }
-    })
+    });
+
+    this.stompClient.subscribe(`/topic/chat/${chatId}/reactions`, message => {
+      try {
+        const update = JSON.parse(message.body);
+        console.log('😀 Reaction update received:', update);
+        this.reactionSubject.next(update);
+      } catch (error) {
+        console.error('Error parsing reaction update:', error);
+      }
+    });
   }
 
   unsubscribeFromChat(): void {
@@ -221,6 +232,26 @@ export class WebSocketService {
         typing: isTyping
       })
     });
+  }
+
+  sendReaction(messageId: string, chatId: string, reactionType: string): void {
+    if (!this.stompClient?.connected) {
+      console.warn('⚠️ STOMP is not connected');
+      return;
+    }
+
+    this.stompClient.publish({
+      destination: '/app/chat.addReaction',
+      body: JSON.stringify({
+        messageId: messageId,
+        chatId: chatId,
+        reactionType: reactionType
+      })
+    });
+  }
+
+  onReactionUpdate(): Observable<any> {
+    return this.reactionSubject.asObservable();
   }
 
   // Observables

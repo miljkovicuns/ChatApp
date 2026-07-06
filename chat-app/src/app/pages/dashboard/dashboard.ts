@@ -19,15 +19,17 @@ import {Chat} from '../../models/chat';
 import {UserService} from '../../services/user-service';
 import {CreateGroupChatRequest} from '../../models/create-group-chat-request';
 import {SendMessageRequest} from '../../models/send-message-request';
-import {async, Observable} from 'rxjs';
+import {async, debounceTime, distinctUntilChanged, Observable, Subject} from 'rxjs';
 import {DomSanitizer, SafeUrl} from '@angular/platform-browser';
 import {UserFilterParams} from '../../models/user-filter-params';
 import {WebSocketService} from '../../services/web-socket-service';
 import {Message} from '../../models/message';
+import {MessageReaction, REACTION_EMOJIS, REACTION_TYPES, ReactionType} from '../../models/reaction';
 import {PasswordModalService} from '../../services/modals/password-modal-service';
 import {ProfileModalComponent} from '../../modals/profile-modal-component/profile-modal-component';
 import {CreateChatModalComponent} from '../../modals/create-chat-modal-component/create-chat-modal-component';
 import {Router} from '@angular/router';
+import {Page} from '../../models/page';
 
 @Component({
   selector: 'app-dashboard',
@@ -114,6 +116,19 @@ export class Dashboard implements OnInit,OnDestroy {
     sortOrder: 'asc'
   };
 
+  messageSearchQuery = '';
+  isSearchMode = false;
+  isSearchingMessages = false;
+  searchResults: Message[] = [];
+  searchTotalElements = 0;
+  searchTotalPages = 0;
+  searchCurrentPage = 0;
+  private messageSearchSubject = new Subject<string>();
+  private readonly SEARCH_DEBOUNCE_TIME = 400; // ms
+  showAdvancedSearchFilters = false;
+  searchStartDate: string = '';
+  searchEndDate: string = '';
+
   private heartbeatInterval: any = null
   private messagePollingInterval: any = null
 
@@ -140,6 +155,10 @@ export class Dashboard implements OnInit,OnDestroy {
   showTypingIndicator = false;
   typingUserId: string | null = null;
   private typingTimeout: any = null;
+
+  reactionPickerMessageId: string | null = null;
+  readonly reactionTypes = REACTION_TYPES;
+  readonly reactionEmojis = REACTION_EMOJIS;
 
   ngOnInit() {
     this.loadCurrentUser()
@@ -168,6 +187,18 @@ export class Dashboard implements OnInit,OnDestroy {
     // Subscribe to read receipts
     this.webSocketService.onReadReceipt().subscribe((receipt: any) => {
       this.handleReadReceipt(receipt);
+    });
+
+    this.webSocketService.onReactionUpdate().subscribe((update: any) => {
+      this.handleReactionUpdate(update);
+    });
+
+    this.messageSearchSubject.pipe(
+      debounceTime(this.SEARCH_DEBOUNCE_TIME),
+      distinctUntilChanged(),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe((searchTerm: string) => {
+      this.performMessageSearch(searchTerm);
     });
   }
 
@@ -226,7 +257,7 @@ export class Dashboard implements OnInit,OnDestroy {
             lastName: user.lastName || '',
             phoneNumber: user.phoneNumber || ''
           });
-
+          this.userService.updateLastSeen()
           this.loadChats()
           this.loadAvailableUsers()
         },
@@ -335,6 +366,7 @@ export class Dashboard implements OnInit,OnDestroy {
               isOwn: msg.own,
               dateOfSending: msg.dateOfSending ? new Date(msg.dateOfSending) : null,
               status: msg.status || "SENT",
+              reactions: msg.reactions || [],
             }));
             console.log("First message body: " + messages[0].content  + " First message status: " + messages[0].status + " First message is own: " + messages[0].own)
             this.isLoadingMessages = false;
@@ -451,10 +483,12 @@ export class Dashboard implements OnInit,OnDestroy {
     if (chat.unread && chat.unread > 0) {
       this.markMessagesAsRead(chat.id);
     }
+    this.exitSearchMode();
   }
 
   getOtherParticipant(chat: Chat) {
     const user = chat.participants.filter(user => user.id !== this.currentUser.id).at(0)
+    console.log("User: " + JSON.stringify(user))
     if(!user) {
       return null
     }
@@ -712,7 +746,8 @@ export class Dashboard implements OnInit,OnDestroy {
           ...message,
           isOwn: message.senderId === this.currentUser?.id,
           dateOfSending: message.dateOfSending || new Date().toISOString(),
-          status: message.status
+          status: message.status,
+          reactions: message.reactions || [],
         });
 
         this.cdr.detectChanges();
@@ -1085,4 +1120,185 @@ export class Dashboard implements OnInit,OnDestroy {
   protected goToRegistrationReview() {
     this.router.navigate(['/admin/registration-review'])
   }
+
+  toggleReactionPicker(messageId: string, event: Event) {
+    event.stopPropagation();
+    this.reactionPickerMessageId = this.reactionPickerMessageId === messageId ? null : messageId;
+    this.cdr.detectChanges();
+  }
+
+  closeReactionPicker() {
+    this.reactionPickerMessageId = null;
+    this.cdr.detectChanges();
+  }
+
+  addReaction(messageId: string, reactionType: ReactionType, event?: Event) {
+    event?.stopPropagation();
+    if (!this.selectedChat?.id) return;
+
+    this.webSocketService.sendReaction(messageId, this.selectedChat.id, reactionType);
+    this.reactionPickerMessageId = null;
+    this.cdr.detectChanges();
+  }
+
+  getReactionEmoji(type: ReactionType): string {
+    return this.reactionEmojis[type] || '👍';
+  }
+
+  getGroupedReactions(reactions: MessageReaction[] | undefined): { type: ReactionType; count: number; reacted: boolean }[] {
+    if (!reactions?.length) return [];
+
+    const grouped = new Map<ReactionType, { count: number; reacted: boolean }>();
+    for (const reaction of reactions) {
+      const existing = grouped.get(reaction.reactionType) || { count: 0, reacted: false };
+      existing.count++;
+      if (reaction.userId === this.currentUser?.id) {
+        existing.reacted = true;
+      }
+      grouped.set(reaction.reactionType, existing);
+    }
+
+    return Array.from(grouped.entries()).map(([type, data]) => ({
+      type,
+      count: data.count,
+      reacted: data.reacted
+    }));
+  }
+
+  private handleReactionUpdate(update: any) {
+    if (!update?.messageId || !update.reactions) return;
+
+    const message = this.messages.find(m => m.id === update.messageId);
+    if (message) {
+      message.reactions = update.reactions;
+      this.cdr.detectChanges();
+    }
+  }
+
+  performMessageSearch(keyword: string) {
+    if (!this.selectedChat?.id) {
+      return;
+    }
+
+    const trimmedKeyword = keyword?.trim();
+
+    if (!trimmedKeyword) {
+      this.exitSearchMode();
+      return;
+    }
+
+    this.isSearchingMessages = true;
+    this.isSearchMode = true;
+
+    // ✅ Use the date values – if empty, pass undefined (backend ignores them)
+    this.chatService.searchMessages(
+      this.selectedChat.id,
+      trimmedKeyword,
+      this.searchStartDate || undefined,
+      this.searchEndDate || undefined,
+      0,
+      50
+    ).pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (page: Page<Message>) => {
+          this.searchResults = page.content.map(msg => ({
+            ...msg,
+            own: msg.senderId === this.currentUser?.id,
+            dateOfSending: msg.dateOfSending || ''
+          }));
+          this.searchTotalElements = page.totalElements;
+          this.searchTotalPages = page.totalPages;
+          this.searchCurrentPage = page.number;
+          this.isSearchingMessages = false;
+          this.cdr.detectChanges();
+        },
+        error: (err) => {
+          console.error('Error searching messages:', err);
+          this.isSearchingMessages = false;
+          this.searchResults = [];
+          this.cdr.detectChanges();
+        }
+      });
+  }
+
+  onMessageSearchInput(searchTerm: string) {
+    this.messageSearchQuery = searchTerm;
+    this.messageSearchSubject.next(searchTerm);
+  }
+
+// Exit search mode and show normal messages
+  exitSearchMode() {
+    this.isSearchMode = false;
+    this.messageSearchQuery = '';
+    this.searchResults = [];
+    this.isSearchingMessages = false;
+    this.cdr.detectChanges();
+  }
+
+// Load more search results (infinite scroll or "Load More" button)
+  loadMoreSearchResults() {
+    if (!this.selectedChat?.id || !this.messageSearchQuery.trim()) {
+      return;
+    }
+
+    const nextPage = this.searchCurrentPage + 1;
+    if (nextPage >= this.searchTotalPages) {
+      return;
+    }
+
+    this.isSearchingMessages = true;
+
+    this.chatService.searchMessages(
+      this.selectedChat.id,
+      this.messageSearchQuery.trim(),
+      this.searchStartDate || undefined,  // ✅ Use the dates
+      this.searchEndDate || undefined,    // ✅ Use the dates
+      nextPage,
+      50
+    ).pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (page: Page<Message>) => {
+          const newMessages = page.content.map(msg => ({
+            ...msg,
+            own: msg.senderId === this.currentUser?.id,
+            dateOfSending: msg.dateOfSending || ''
+          }));
+          this.searchResults = [...this.searchResults, ...newMessages];
+          this.searchTotalElements = page.totalElements;
+          this.searchTotalPages = page.totalPages;
+          this.searchCurrentPage = page.number;
+          this.isSearchingMessages = false;
+          this.cdr.detectChanges();
+        },
+        error: (err) => {
+          console.error('Error loading more search results:', err);
+          this.isSearchingMessages = false;
+          this.cdr.detectChanges();
+        }
+      });
+  }
+
+  // Highlight search keyword in message content
+  highlightText(text: string, searchTerm: string): string {
+    if (!text || !searchTerm || !searchTerm.trim()) {
+      return text;
+    }
+
+    const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    return text.replace(regex, '<mark class="search-highlight">$1</mark>');
+  }
+
+  get currentMessages(): Message[] {
+    return this.isSearchMode ? this.searchResults : this.messages;
+  }
+
+  clearDateFilters() {
+    this.searchStartDate = '';
+    this.searchEndDate = '';
+    // Re-run the search to refresh results without date filters
+    if (this.messageSearchQuery.trim()) {
+      this.performMessageSearch(this.messageSearchQuery);
+    }
+  }
+
 }

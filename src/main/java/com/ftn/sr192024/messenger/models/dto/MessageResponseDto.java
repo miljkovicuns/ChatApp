@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.UUID;
 
 @Getter
@@ -20,6 +21,7 @@ public class MessageResponseDto {
     private UUID chatId;
     private boolean isOwn;  // Whether the message belongs to the current user
     private String status;
+    private List<ReactionResponseDto> reactions;
 
     private static final DateTimeFormatter FORMATTER =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -61,6 +63,8 @@ public class MessageResponseDto {
                 dto.setStatus(message.getReadStatuses().get(0).getStatus().toString());
             }
         }
+
+        dto.setReactions(ReactionResponseDto.fromEntities(message.getReactions()));
 
         return dto;
     }

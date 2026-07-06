@@ -1,11 +1,20 @@
 package com.ftn.sr192024.messenger.services;
 
 import com.ftn.sr192024.messenger.models.*;
+import com.ftn.sr192024.messenger.models.dto.MessageSearchResponseDto;
+import com.ftn.sr192024.messenger.models.dto.SearchMessageDto;
 import com.ftn.sr192024.messenger.models.dto.SendMessageDto;
+import com.ftn.sr192024.messenger.repository.ChatRepository;
 import com.ftn.sr192024.messenger.repository.MessageReadStatusRepository;
 import com.ftn.sr192024.messenger.repository.MessageRepository;
+import com.ftn.sr192024.messenger.security.SecurityUtils;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -18,6 +27,7 @@ public class MessageService {
     private final MessageReadStatusRepository readStatusRepository;
     private final UserService userService;
     private final ChatUpdateService chatUpdateService; // Only dependency needed
+    private final ChatRepository chatRepository;
 
     public List<Message> findByChatId(UUID chatID) {
         return messageRepository.findByChatIdOrderByDateOfSendingAsc(chatID).orElse(null);
@@ -55,7 +65,7 @@ public class MessageService {
                 status.setUser(participant);
                 status.setMessage(message);
                 status.setStatus(ReadEnum.SENT);
-
+                statuses.add(status);
             }
         }else{
             User participant = chat.getParticipants().stream().filter(user -> {
@@ -119,5 +129,60 @@ public class MessageService {
         }
 
         return unreadCounts;
+    }
+
+    // ------------------- SEARCH WITH SECURITY CHECK -------------------
+    public Page<MessageSearchResponseDto> searchMessagesInChat(SearchMessageDto searchDto) {
+        // 1. Security Check (using the chatId from DTO)
+        UUID currentUserId = SecurityUtils.getCurrentUserId();
+        if (!chatRepository.isUserParticipant(searchDto.getChatId(), currentUserId)) {
+            throw new AccessDeniedException("User is not a member of this chat");
+        }
+
+        // 2. Pagination
+        Pageable pageable = PageRequest.of(
+                searchDto.getPage(),
+                searchDto.getSize(),
+                Sort.by(Sort.Direction.DESC, "dateOfSending")
+        );
+
+        // 3. Clean keyword
+        String keyword = searchDto.getKeyword();
+        if (keyword != null && keyword.trim().isEmpty()) {
+            keyword = null;
+        }
+
+        // 4. Execute search
+        Page<Message> messagePage;
+        try {
+            messagePage = messageRepository.searchMessagesInChat(
+                    searchDto.getChatId(),
+                    keyword,
+                    searchDto.getStartDate(),
+                    searchDto.getEndDate(),
+                    pageable
+            );
+        } catch (Exception e) {
+            messagePage = messageRepository.searchMessagesInChatFallback(
+                    searchDto.getChatId(),
+                    keyword,
+                    searchDto.getStartDate(),
+                    searchDto.getEndDate(),
+                    pageable
+            );
+        }
+
+        // 5. ✅ MAP TO DTO to avoid JSON recursion
+        return messagePage.map(this::convertToResponseDto);
+    }
+
+    private MessageSearchResponseDto convertToResponseDto(Message message) {
+        return new MessageSearchResponseDto(
+                message.getId(),
+                message.getContent(),
+                message.getDateOfSending(),
+                message.getSender() != null ? message.getSender().getId() : null,
+                message.getSender() != null ? message.getSender().getUsername() : "Unknown"
+        );
     }
 }

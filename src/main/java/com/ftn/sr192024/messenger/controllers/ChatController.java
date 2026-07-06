@@ -2,12 +2,13 @@ package com.ftn.sr192024.messenger.controllers;
 
 import com.ftn.sr192024.messenger.models.Chat;
 import com.ftn.sr192024.messenger.models.Message;
-import com.ftn.sr192024.messenger.models.dto.GroupChatRequest;
-import com.ftn.sr192024.messenger.models.dto.MessageResponseDto;
-import com.ftn.sr192024.messenger.models.dto.SendMessageDto;
+import com.ftn.sr192024.messenger.models.ReactionType;
+import com.ftn.sr192024.messenger.models.dto.*;
 import com.ftn.sr192024.messenger.services.ChatService;
 import com.ftn.sr192024.messenger.services.MessageService;
+import com.ftn.sr192024.messenger.services.ReactionService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
@@ -28,6 +29,8 @@ public class ChatController {
     private final ChatService chatService;
 
     private final MessageService messageService;
+
+    private final ReactionService reactionService;
 
     @GetMapping("/my-chats")
     public ResponseEntity<List<Chat>> getMyChats() {
@@ -57,6 +60,14 @@ public class ChatController {
     public ResponseEntity<Message> sendMessage(@RequestBody SendMessageDto messageDto) {
         Message message = messageService.sendMessage(messageDto);
         return ResponseEntity.ok(message);
+    }
+
+    @GetMapping("/messages/search")
+    public ResponseEntity<Page<MessageSearchResponseDto>> searchMessages(
+            @ModelAttribute SearchMessageDto searchDto // or @RequestBody if you send JSON
+    ) {
+        Page<MessageSearchResponseDto> messages = messageService.searchMessagesInChat(searchDto);
+        return ResponseEntity.ok(messages);
     }
 
     @GetMapping("/messages/{chatId}")
@@ -91,5 +102,15 @@ public class ChatController {
         UUID userId = getCurrentUserId();
         Map<UUID, Integer> unreadCounts = messageService.getUnreadCountsForUser(userId);
         return ResponseEntity.ok(unreadCounts);
+    }
+
+    @PostMapping("/messages/{messageId}/reactions")
+    public ResponseEntity<List<ReactionResponseDto>> toggleReaction(
+            @PathVariable UUID messageId,
+            @RequestBody Map<String, String> request) {
+        UUID userId = getCurrentUserId();
+        ReactionType reactionType = ReactionType.valueOf(request.get("reactionType"));
+        List<ReactionResponseDto> reactions = reactionService.toggleReaction(messageId, userId, reactionType);
+        return ResponseEntity.ok(reactions);
     }
 }

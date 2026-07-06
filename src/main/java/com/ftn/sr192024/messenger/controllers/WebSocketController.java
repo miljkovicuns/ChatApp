@@ -2,10 +2,13 @@ package com.ftn.sr192024.messenger.controllers;
 
 import com.ftn.sr192024.messenger.models.Message;
 import com.ftn.sr192024.messenger.models.ReadEnum;
+import com.ftn.sr192024.messenger.models.ReactionType;
 import com.ftn.sr192024.messenger.models.User;
+import com.ftn.sr192024.messenger.models.dto.ReactionResponseDto;
 import com.ftn.sr192024.messenger.models.dto.SendMessageDto;
 import com.ftn.sr192024.messenger.models.dto.WebSocketMessage;
 import com.ftn.sr192024.messenger.services.MessageService;
+import com.ftn.sr192024.messenger.services.ReactionService;
 import com.ftn.sr192024.messenger.services.UserService;
 import lombok.*;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -15,12 +18,14 @@ import org.springframework.stereotype.Controller;
 
 import java.security.Principal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @RequiredArgsConstructor
 @Controller
 public class WebSocketController {
     private final MessageService messageService;
+    private final ReactionService reactionService;
     private final UserService userService;
     private final SimpMessagingTemplate messagingTemplate;
 
@@ -105,6 +110,44 @@ public class WebSocketController {
                 "/topic/chat/" + request.getChatId() + "/typing",
                 new TypingResponse(userId,request.getChatId(),request.isTyping())
         );
+    }
+
+    @MessageMapping("/chat.addReaction")
+    public void addReaction(@Payload AddReactionRequest request, Principal principal) {
+        String username = principal.getName();
+        User user = userService.findByUsername(username).orElse(null);
+        assert user != null;
+
+        List<ReactionResponseDto> reactions = reactionService.toggleReaction(
+                request.getMessageId(),
+                user.getId(),
+                request.getReactionType()
+        );
+
+        messagingTemplate.convertAndSend(
+                "/topic/chat/" + request.getChatId() + "/reactions",
+                new ReactionUpdateResponse(request.getMessageId(), request.getChatId(), reactions)
+        );
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class AddReactionRequest {
+        private UUID messageId;
+        private UUID chatId;
+        private ReactionType reactionType;
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ReactionUpdateResponse {
+        private UUID messageId;
+        private UUID chatId;
+        private List<ReactionResponseDto> reactions;
     }
 
     @Getter
