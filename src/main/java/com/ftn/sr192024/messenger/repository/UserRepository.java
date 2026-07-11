@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -16,7 +17,7 @@ import java.util.UUID;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, UUID> {
-    Optional<User> findByUsernameAndRegisteredIsTrue(String username);
+    Optional<User> findByUsernameAndRegisteredIsTrueAndActiveIsTrue(String username);
 
     @Query("SELECT u FROM User u WHERE u.id != :currentUserId " +
             "AND (:searchQuery IS NULL OR " +
@@ -37,4 +38,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     Optional<User> findUserByIdAndRegisteredIsTrue(UUID id);
 
     Optional<List<User>> findByIdInAndRegistered(Collection<UUID> id, boolean registered);
+
+    @Query("SELECT COUNT(u) FROM User u WHERE u.createdAt <= :end")
+    long countByCreatedAtBeforeOrEqual(@Param("end") LocalDateTime end);
 }

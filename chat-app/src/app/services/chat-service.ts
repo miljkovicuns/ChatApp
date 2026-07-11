@@ -1,11 +1,12 @@
 import {inject, Injectable} from '@angular/core';
 import {HttpClient, HttpParams} from '@angular/common/http';
-import {Observable} from 'rxjs';
+import {map, Observable} from 'rxjs';
 import {Chat} from '../models/chat';
 import {CreateGroupChatRequest} from '../models/create-group-chat-request';
 import {Message} from '../models/message';
 import {SendMessageRequest} from '../models/send-message-request';
 import {Page} from '../models/page';
+import {SavedMessageDto} from '../models/saved-message.dto';
 
 @Injectable({
   providedIn: 'root'
@@ -99,5 +100,23 @@ export class ChatService {
     }
 
     return this.http.get<Page<Message>>(`${this.apiUrl}/messages/search`, { params });
+  }
+
+  // In chat-service.ts
+  saveMessage(messageId: string): Observable<void> {
+    let data = new FormData()
+    data.append("messageId",messageId)
+    return this.http.post<void>(`${this.apiUrl}/messages/save`, data);
+  }
+
+  unsaveMessage(messageId: string): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/messages/${messageId}/save`);
+  }
+
+  getSavedMessages(page: number = 0, size: number = 20): Observable<Page<SavedMessageDto>> {
+    const params = new HttpParams()
+      .set('page', page.toString())
+      .set('size', size.toString());
+    return this.http.get<Page<SavedMessageDto>>(`${this.apiUrl}/messages/saved`, { params });
   }
 }

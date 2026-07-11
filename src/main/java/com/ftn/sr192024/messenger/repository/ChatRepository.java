@@ -33,4 +33,6 @@ public interface ChatRepository extends JpaRepository<Chat, UUID> {
 
     @Query("SELECT COUNT(c) > 0 FROM Chat c JOIN c.participants p WHERE c.id = :chatId AND p.id = :userId")
     boolean isUserParticipant(@Param("chatId") UUID chatId, @Param("userId") UUID userId);
+
+    long countByGroupChatTrueAndDateCreatedBetween(LocalDateTime start, LocalDateTime end);
 }

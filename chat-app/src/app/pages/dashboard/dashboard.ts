@@ -2,24 +2,20 @@ import {
   ChangeDetectorRef,
   Component,
   DestroyRef,
-  ElementRef,
   inject,
   OnDestroy,
-  OnInit,
-  ViewChild
+  OnInit
 } from '@angular/core';
-import {CommonModule, NgOptimizedImage} from '@angular/common';
+import {CommonModule} from '@angular/common';
 import {Auth} from '../../services/auth';
 import {FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators} from '@angular/forms';
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
-import {Login} from '../login/login';
 import {User} from '../../models/user';
 import {ChatService} from '../../services/chat-service';
 import {Chat} from '../../models/chat';
 import {UserService} from '../../services/user-service';
 import {CreateGroupChatRequest} from '../../models/create-group-chat-request';
-import {SendMessageRequest} from '../../models/send-message-request';
-import {async, debounceTime, distinctUntilChanged, Observable, Subject} from 'rxjs';
+import {debounceTime, distinctUntilChanged, Subject} from 'rxjs';
 import {DomSanitizer, SafeUrl} from '@angular/platform-browser';
 import {UserFilterParams} from '../../models/user-filter-params';
 import {WebSocketService} from '../../services/web-socket-service';
@@ -28,13 +24,13 @@ import {MessageReaction, REACTION_EMOJIS, REACTION_TYPES, ReactionType} from '..
 import {PasswordModalService} from '../../services/modals/password-modal-service';
 import {ProfileModalComponent} from '../../modals/profile-modal-component/profile-modal-component';
 import {CreateChatModalComponent} from '../../modals/create-chat-modal-component/create-chat-modal-component';
-import {Router} from '@angular/router';
+import {Router, RouterLink, ActivatedRoute} from '@angular/router';
 import {Page} from '../../models/page';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FormsModule, ProfileModalComponent, CreateChatModalComponent],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, ProfileModalComponent, CreateChatModalComponent, RouterLink],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css'
 })
@@ -49,6 +45,7 @@ export class Dashboard implements OnInit,OnDestroy {
   private webSocketService = inject(WebSocketService)
   private passwordModalService = inject(PasswordModalService)
   private router = inject(Router)
+  private route = inject(ActivatedRoute)
 
   //Profile related properties
   currentUser: any = null
@@ -130,7 +127,6 @@ export class Dashboard implements OnInit,OnDestroy {
   searchEndDate: string = '';
 
   private heartbeatInterval: any = null
-  private messagePollingInterval: any = null
 
   messageStatuses: Map<string, 'sent' | 'delivered' | 'read'> = new Map();
 
@@ -344,6 +340,19 @@ export class Dashboard implements OnInit,OnDestroy {
         next: (chats: Chat[]) => {
           this.chats = chats
           this.isLoadingChats = false
+          this.route.queryParams.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(params => {
+            const chatId = params['chatId'];
+            const messageId = params['messageId'];
+            if (chatId && messageId) {
+              const chat = this.chats.find(c => c.id == chatId);
+              if (chat) {
+                this.selectChat(chat);
+                // After messages loaded, scroll to that message
+                setTimeout(() => this.scrollToMessage(messageId), 500);
+              }
+            }
+            this.clearQueryParams()
+          });
           this.cdr.detectChanges()
           this.loadUnreadCounts()
         },
@@ -364,6 +373,7 @@ export class Dashboard implements OnInit,OnDestroy {
             this.messages = messages.map(msg => ({
               ...msg,
               isOwn: msg.own,
+              isSaved: msg.isSaved,
               dateOfSending: msg.dateOfSending ? new Date(msg.dateOfSending) : null,
               status: msg.status || "SENT",
               reactions: msg.reactions || [],
@@ -488,7 +498,6 @@ export class Dashboard implements OnInit,OnDestroy {
 
   getOtherParticipant(chat: Chat) {
     const user = chat.participants.filter(user => user.id !== this.currentUser.id).at(0)
-    console.log("User: " + JSON.stringify(user))
     if(!user) {
       return null
     }
@@ -1301,4 +1310,65 @@ export class Dashboard implements OnInit,OnDestroy {
     }
   }
 
+  // Add to Dashboard component
+
+  toggleSaveMessage(messageId: string, event: Event) {
+    event.stopPropagation();
+    const message = this.currentMessages.find(m => m.id === messageId);
+    if (!message) return;
+
+    if (message.isSaved) {
+      this.unsaveMessage(messageId);
+    } else {
+      this.saveMessage(messageId);
+    }
+  }
+
+  saveMessage(messageId: string) {
+    this.chatService.saveMessage(messageId).pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          const msg = this.currentMessages.find(m => m.id === messageId);
+          if (msg) msg.isSaved = true;
+          this.cdr.detectChanges();
+        },
+        error: (err) => alert("Message already saved")
+      });
+  }
+
+  unsaveMessage(messageId: string) {
+    this.chatService.unsaveMessage(messageId).pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          const msg = this.currentMessages.find(m => m.id === messageId);
+          if (msg) msg.isSaved = false;
+          this.cdr.detectChanges();
+        },
+        error: (err) => console.error('Error unsaving message', err)
+      });
+  }
+
+  scrollToMessage(messageId: string) {
+  const element = document.querySelector(`[data-message-id="${messageId}"]`);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      element.classList.add('highlight-message');
+      setTimeout(() => element.classList.remove('highlight-message'), 3000);
+    }
+  }
+
+  clearQueryParams() {
+    this.router.navigate([], {
+      queryParams: {},
+      replaceUrl: true // Replaces the current history state instead of adding a new one
+    });
+  }
+
+  goToUserManagement() {
+    this.router.navigate(['/admin/user-management']);
+  }
+
+  goToAnalytics() {
+    this.router.navigate(['/admin/analytics']);
+  }
 }

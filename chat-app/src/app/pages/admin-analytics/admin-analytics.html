@@ -1,0 +1,124 @@
+<div class="analytics-container">
+  <!-- Top Bar -->
+  <app-top-bar
+    [currentUser]="currentUser"
+    logoText="📊 Analytics"
+    badgeText="Admin Stats"
+    [customButtons]="customButtons"
+    (onRefresh)="loadAnalytics()"
+    (onSettings)="openSettings()"
+    (onLogout)="logout()"
+  ></app-top-bar>
+
+  <!-- Date Range Selector + Aggregation Level -->
+  <div class="controls">
+    <div class="date-range">
+      <label>From:</label>
+      <input type="datetime-local" [(ngModel)]="startDate" (change)="onDateChange()" />
+      <label>To:</label>
+      <input type="datetime-local" [(ngModel)]="endDate" (change)="onDateChange()" />
+    </div>
+    <div class="aggregation">
+      <label>Group by:</label>
+      <select [(ngModel)]="aggregationLevel" (change)="loadAnalytics()">
+        <option value="daily">Daily</option>
+        <option value="weekly">Weekly</option>
+        <option value="monthly">Monthly</option>
+        <option value="yearly">Yearly</option>
+      </select>
+    </div>
+    <button class="refresh-btn" (click)="loadAnalytics()" [disabled]="isLoading">
+      <i class="fas fa-sync-alt"></i> Refresh
+    </button>
+  </div>
+
+  <!-- Error message -->
+  @if (error) {
+    <div class="error-message">
+      <i class="fas fa-exclamation-circle"></i> {{ error }}
+    </div>
+  }
+
+  <!-- Stats Cards -->
+  @if (analytics && !isLoading) {
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon"><i class="fas fa-users"></i></div>
+        <div class="stat-info">
+          <span class="stat-label">Total Registered Users</span>
+          <span class="stat-value">{{ analytics.totalUsers }}</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background: #22c55e;"><i class="fas fa-user-check"></i></div>
+        <div class="stat-info">
+          <span class="stat-label">Active Users (sent messages)</span>
+          <span class="stat-value">{{ analytics.activeUsers }}</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background: #3b82f6;"><i class="fas fa-comments"></i></div>
+        <div class="stat-info">
+          <span class="stat-label">Total Messages</span>
+          <span class="stat-value">{{ analytics.totalMessages }}</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background: #8b5cf6;"><i class="fas fa-layer-group"></i></div>
+        <div class="stat-info">
+          <span class="stat-label">Groups Created</span>
+          <span class="stat-value">{{ analytics.totalGroupsCreated }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top Lists -->
+    <div class="top-lists">
+      <div class="top-users">
+        <h3>🏆 Top Active Users</h3>
+        <table>
+          <thead>
+          <tr><th>#</th><th>User</th><th>Messages</th></tr>
+          </thead>
+          <tbody>
+            @for (user of analytics.topUsers; track user.userId; let i = $index) {
+              <tr>
+                <td>{{ i + 1 }}</td>
+                <td>{{ user.fullName }} (&#64;{{ user.username }})</td>
+                <td>{{ user.messageCount }}</td>
+              </tr>
+            }
+            @empty {
+              <tr><td colspan="3">No users in this period.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <div class="top-groups">
+        <h3>🏆 Most Active Groups</h3>
+        <table>
+          <thead>
+          <tr><th>#</th><th>Group Name</th><th>Messages</th></tr>
+          </thead>
+          <tbody>
+            @for (group of analytics.topGroups; track group.groupId; let i = $index) {
+              <tr>
+                <td>{{ i + 1 }}</td>
+                <td>{{ group.groupName || 'Unnamed Group' }}</td>
+                <td>{{ group.messageCount }}</td>
+              </tr>
+            }
+            @empty {
+              <tr><td colspan="3">No groups active in this period.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  } @else if (isLoading) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Loading analytics...</p>
+    </div>
+  }
+</div>

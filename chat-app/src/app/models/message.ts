@@ -18,4 +18,5 @@ export interface Message {
   own?: boolean;
   status:MessageStatus
   deliveredAt?: string
+  isSaved: boolean;
 }

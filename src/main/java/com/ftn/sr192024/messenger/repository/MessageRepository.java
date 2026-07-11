@@ -47,4 +47,30 @@ public interface MessageRepository extends JpaRepository<Message, UUID> {
             @Param("endDate") LocalDateTime endDate,
             Pageable pageable
     );
+
+    @Query("SELECT COUNT(DISTINCT m.sender.id) FROM Message m WHERE m.dateOfSending BETWEEN :start AND :end")
+    long countDistinctSendersInPeriod(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
+    @Query("SELECT COUNT(m) FROM Message m WHERE m.dateOfSending BETWEEN :start AND :end")
+    long countByDateOfSendingBetween(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
+    // Top users
+    @Query(value = "SELECT u.id, u.username, u.first_name, u.last_name, COUNT(m.id) as cnt " +
+            "FROM users u JOIN messages m ON u.id = m.sender " +
+            "WHERE m.date_of_sending BETWEEN :start AND :end " +
+            "GROUP BY u.id, u.username, u.first_name, u.last_name " +
+            "ORDER BY cnt DESC LIMIT :limit", nativeQuery = true)
+    List<Object[]> findTopUsersByMessageCount(@Param("start") LocalDateTime start,
+                                              @Param("end") LocalDateTime end,
+                                              @Param("limit") int limit);
+
+    // Top groups (only group chats)
+    @Query(value = "SELECT c.id, c.name, COUNT(m.id) as cnt " +
+            "FROM chat c JOIN messages m ON c.id = m.chat_id " +
+            "WHERE c.group_chat = true AND m.date_of_sending BETWEEN :start AND :end " +
+            "GROUP BY c.id, c.name " +
+            "ORDER BY cnt DESC LIMIT :limit", nativeQuery = true)
+    List<Object[]> findTopGroupsByMessageCount(@Param("start") LocalDateTime start,
+                                               @Param("end") LocalDateTime end,
+                                               @Param("limit") int limit);
 }

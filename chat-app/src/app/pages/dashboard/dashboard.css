@@ -2134,3 +2134,9 @@ textarea:focus {
 .dark-theme .clear-filters-btn {
   color: #6eb4ff;
 }
+
+.highlight-message {
+  background: #fff3cd !important;
+  transition: background 0.3s;
+  border-radius: 8px;
+}

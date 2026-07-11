@@ -13,4 +13,5 @@ export interface User {
   online: boolean;
   hasImage: boolean;
   formattedLastSeen: string;
+  active: boolean
 }

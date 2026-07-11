@@ -1,7 +1,9 @@
 import {inject, Service} from '@angular/core';
 import {RegistrationRequest} from '../models/registration-request';
-import {HttpClient, HttpHeaders} from '@angular/common/http';
+import {HttpClient, HttpHeaders, HttpParams} from '@angular/common/http';
 import {Observable} from 'rxjs';
+import {User} from '../models/user';
+import {AnalyticsSummaryDto} from '../models/analytics-summary.dto';
 
 @Service()
 export class AdminService {
@@ -22,5 +24,21 @@ export class AdminService {
   rejectRequest(id: string) {
     const headers = new HttpHeaders().set('Content-Type', 'application/json');
     return this.http.post<RegistrationRequest>(`${this.apiUrl}/register/request/reject`, JSON.stringify(id), {headers})
+  }
+
+  updateUserRole(userId: string, newRole: string): Observable<User> {
+    return this.http.put<User>(`${this.apiUrl}/users/${userId}/role`, { role: newRole });
+  }
+
+  toggleUserActive(userId: string): Observable<User> {
+    return this.http.patch<User>(`${this.apiUrl}/users/${userId}/toggle-active`, {});
+  }
+
+  // admin-service.ts
+  getAnalytics(startDate: string, endDate: string): Observable<AnalyticsSummaryDto> {
+    const params = new HttpParams()
+      .set('startDate', startDate)
+      .set('endDate', endDate);
+    return this.http.get<AnalyticsSummaryDto>(`${this.apiUrl}/analytics`, { params });
   }
 }

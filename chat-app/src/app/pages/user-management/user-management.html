@@ -1,0 +1,214 @@
+<div class="user-management-container">
+  <!-- Top Bar Component -->
+  <app-top-bar
+    [currentUser]="currentUser"
+    logoText="👥 User Management"
+    badgeText="Manage Users"
+    [customButtons]="customButtons"
+    (onRefresh)="refreshUsers()"
+    (onSettings)="openSettings()"
+    (onLogout)="logout()"
+  ></app-top-bar>
+
+  <!-- Stats Summary -->
+  <div class="stats-row">
+    <div class="stat-item">
+      <i class="fas fa-users"></i>
+      <span class="stat-label">Total Users</span>
+      <span class="stat-value">{{ totalUsers }}</span>
+    </div>
+    <div class="stat-item">
+      <i class="fas fa-circle" style="color: #22c55e;"></i>
+      <span class="stat-label">Online</span>
+      <span class="stat-value" style="color: #22c55e;">{{ onlineUsers }}</span>
+    </div>
+    <div class="stat-item">
+      <i class="fas fa-user-shield" style="color: #4a90e2;"></i>
+      <span class="stat-label">Admins</span>
+      <span class="stat-value" style="color: #4a90e2;">{{ adminUsers }}</span>
+    </div>
+    <div class="stat-item">
+      <i class="fas fa-user-check"></i>
+      <span class="stat-label">Active</span>
+      <span class="stat-value">{{ activeUsers }}</span>
+    </div>
+  </div>
+
+  <!-- Main Grid -->
+  <div class="user-grid">
+    <!-- Left Panel: User List -->
+    <div class="user-list-panel">
+      <div class="list-header">
+        <h3>
+          <i class="fas fa-list-ul"></i> All Users
+          <span>{{ filteredUsers.length }}</span>
+        </h3>
+        <div class="search-filter">
+          <i class="fas fa-search"></i>
+          <input
+            type="text"
+            placeholder="Search by name, email, phone..."
+            [(ngModel)]="searchQuery"
+            (input)="applyFilters()"
+          />
+          @if (searchQuery) {
+            <button class="clear-search" (click)="searchQuery = ''; applyFilters()">
+              <i class="fas fa-times-circle"></i>
+            </button>
+          }
+        </div>
+      </div>
+
+      <!-- User List -->
+      <div class="user-list">
+        @if (isLoading) {
+          <div class="loading-state">
+            <div class="spinner"></div>
+            <p>Loading users...</p>
+          </div>
+        } @else if (filteredUsers.length === 0) {
+          <div class="empty-state">
+            <i class="fas fa-user-slash"></i>
+            <p>No users found</p>
+            <span class="empty-hint">Try adjusting your search</span>
+          </div>
+        } @else {
+          @for (user of filteredUsers; track user.id) {
+            <div
+              class="user-item"
+              [class.active]="selectedUser?.id === user.id"
+              (click)="selectUser(user)"
+            >
+              <div class="avatar">
+                @if (user.profileImage) {
+                  <img [src]="user.profileImage" [alt]="user.username" class="avatar-image-small">
+                } @else {
+                  <span>{{ (user.username?.charAt(0) || '?') | uppercase }}</span>
+                }
+                @if (user.online) {
+                  <span class="online-dot"></span>
+                }
+              </div>
+
+              <div class="info">
+                <div class="name">
+                  {{ user.firstName }} {{ user.lastName }}
+                  <span class="role-tag">{{ user.role }}</span>
+                </div>
+                <div class="sub">
+                  <span><i class="fas fa-envelope"></i> {{ user.email }}</span>
+                  <span><i class="fas fa-phone"></i> {{ user.phoneNumber || 'N/A' }}</span>
+                </div>
+              </div>
+
+              <div class="status-badge" [class]="user.online ? 'online' : 'offline'">
+                {{ user.online ? 'Online' : 'Offline' }}
+              </div>
+            </div>
+          }
+        }
+      </div>
+    </div>
+
+    <!-- Right Panel: User Detail -->
+    <div class="detail-panel">
+      @if (!selectedUser) {
+        <div class="detail-empty">
+          <i class="fas fa-user-circle"></i>
+          <h3>Select a user</h3>
+          <p>Choose a user from the list to view and manage</p>
+        </div>
+      } @else {
+        <div class="detail-header">
+          <div class="detail-user">
+            <div class="detail-avatar">
+              @if (selectedUser.profileImage) {
+                <img [src]="selectedUser.profileImage" [alt]="selectedUser.username" class="avatar-image-large">
+              } @else {
+                <span>{{ (selectedUser.username?.charAt(0) || '?') | uppercase }}</span>
+              }
+            </div>
+            <div class="name-box">
+              <h2>{{ selectedUser.firstName }} {{ selectedUser.lastName }}</h2>
+              <div class="username">&#64;{{ selectedUser.username }}</div>
+            </div>
+          </div>
+          <div class="detail-actions">
+            <span class="status-badge large" [class]="selectedUser.online ? 'online' : 'offline'">
+              {{ selectedUser.online ? 'Online' : 'Offline' }}
+            </span>
+          </div>
+        </div>
+
+        <!-- User Information -->
+        <div class="detail-body">
+          <div class="info-grid">
+            <div class="info-item">
+              <label><i class="fas fa-envelope"></i> Email</label>
+              <p>{{ selectedUser.email }}</p>
+            </div>
+            <div class="info-item">
+              <label><i class="fas fa-phone"></i> Phone</label>
+              <p>{{ selectedUser.phoneNumber || 'Not provided' }}</p>
+            </div>
+            <div class="info-item">
+              <label><i class="fas fa-user-tag"></i> Role</label>
+              <p>
+                <select
+                  class="role-select"
+                  [(ngModel)]="selectedUser.role"
+                  (change)="updateRole(selectedUser, selectedUser.role)"
+                  [disabled]="isProcessing || selectedUser.id === currentUser?.id"
+                >
+                  @for (role of roles; track role) {
+                    <option [value]="role">{{ role }}</option>
+                  }
+                </select>
+                @if (selectedUser.id === currentUser?.id) {
+                  <span class="hint">(cannot change your own role)</span>
+                }
+              </p>
+            </div>
+            <div class="info-item">
+              <label><i class="fas fa-calendar-plus"></i> Joined</label>
+              <p>{{ selectedUser.createdAt | date:'medium' }}</p>
+            </div>
+            <div class="info-item full-width">
+              <label><i class="fas fa-id-card"></i> User ID</label>
+              <p class="mono">{{ selectedUser.id }}</p>
+            </div>
+            @if (selectedUser.lastOnline) {
+              <div class="info-item">
+                <label><i class="fas fa-clock"></i> Last Seen</label>
+                <p>{{ selectedUser.lastOnline | date:'medium' }}</p>
+              </div>
+            }
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="action-buttons-row">
+            <!-- Toggle active (if applicable) -->
+            <button
+              class="btn-toggle"
+              (click)="toggleActive(selectedUser)"
+              [disabled]="isProcessing || selectedUser.id === currentUser?.id"
+            >
+              <i class="fas" [class.fa-user-check]="selectedUser.active !== false" [class.fa-user-slash]="selectedUser.active === false"></i>
+              {{ (selectedUser.active !== false) ? 'Deactivate' : 'Activate' }}
+            </button>
+
+            <!-- Additional actions could go here -->
+          </div>
+
+          <!-- Error Message -->
+          @if (actionError) {
+            <div class="error-message">
+              <i class="fas fa-exclamation-circle"></i>
+              {{ actionError }}
+            </div>
+          }
+        </div>
+      }
+    </div>
+  </div>
+</div>

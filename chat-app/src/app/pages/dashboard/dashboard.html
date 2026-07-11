@@ -35,6 +35,9 @@
         <button class="logout-btn" (click)="logout()" title="Logout">
           🚪 Logout
         </button>
+        <button class="icon-btn" routerLink="/saved-messages" title="Saved Messages">
+          ⭐
+        </button>
       </div>
     </div>
   </div>
@@ -56,10 +59,14 @@
             Registration Requests
             <span class="pending-badge">{{ pendingRegistrationCount }}</span>
           </button>
-          <!--<button class="admin-quick-btn" (click)="goToUserManagement()">
+          <button class="admin-quick-btn" (click)="goToUserManagement()">
             <i class="fas fa-users-cog"></i>
             User Management
-          </button>-->
+          </button>
+          <button class="admin-quick-btn" (click)="goToAnalytics()">
+            <i class="fas fa-chart-bar"></i>
+            Analytics
+          </button>
         </div>
       }
 
@@ -201,12 +208,15 @@
       <div class="messages-area" #messagesContainer *ngIf="selectedChat; else noChatSelected">
         <!-- ✅ Use currentMessages instead of messages -->
         @for (message of currentMessages; track message.id) {
-          <div class="message" [class.own-message]="message.own">
+          <!-- Single message container -->
+          <div class="message"
+               [class.own-message]="message.own"
+               [attr.data-message-id]="message.id">
             <div class="message-content">
-              <!-- ✅ Use highlightText pipe/function -->
+              <!-- Message text with search highlight -->
               <div class="message-text" [innerHTML]="highlightText(message.content, messageSearchQuery)"></div>
 
-              <!-- Reactions (unchanged) -->
+              <!-- Reactions -->
               @if (getGroupedReactions(message.reactions).length > 0) {
                 <div class="message-reactions">
                   @for (group of getGroupedReactions(message.reactions); track group.type) {
@@ -221,31 +231,41 @@
                 </div>
               }
 
+              <!-- Message footer -->
               <div class="message-footer">
                 <!-- Timestamp -->
                 <span class="message-time" [style.color]="message.own ? '#ffffff' : '#000000'">
-            {{ message.dateOfSending | date:'short' }}
-          </span>
+          {{ message.dateOfSending | date:'short' }}
+        </span>
 
                 <!-- Status (only for own messages) -->
                 @if (message.own) {
                   <span class="message-status" [class]="message.status">
-              @if (message.status === 'SENT') {
-                ✓
-              } @else if (isMessageDelivered(message)) {
-                ✓✓
-              } @else if (isMessageRead(message)) {
-                <span class="read-text" style="color: greenyellow">Read ✓✓</span>
-              }
-            </span>
+            @if (message.status === 'SENT') {
+              ✓
+            } @else if (isMessageDelivered(message)) {
+              ✓✓
+            } @else if (isMessageRead(message)) {
+              <span class="read-text" style="color: greenyellow">Read ✓✓</span>
+            }
+          </span>
                 }
 
+                <!-- Reaction trigger -->
                 <button class="reaction-trigger" (click)="toggleReactionPicker(message.id, $event)" title="Add reaction">
                   😊
                 </button>
+
+                <!-- Save/Unsave button -->
+                <button class="save-btn"
+                        (click)="toggleSaveMessage(message.id, $event)"
+                        [class.saved]="message.isSaved"
+                        title="Save/Unsave message">
+                  {{ message.isSaved ? '⭐' : '☆' }}
+                </button>
               </div>
 
-              <!-- Reaction picker (unchanged) -->
+              <!-- Reaction picker -->
               @if (reactionPickerMessageId === message.id) {
                 <div class="reaction-picker" (click)="$event.stopPropagation()">
                   @for (type of reactionTypes; track type) {
@@ -255,8 +275,8 @@
                   }
                 </div>
               }
-            </div>
-          </div>
+            </div> <!-- /message-content -->
+          </div> <!-- /message -->
         }
 
         <!-- Empty state for search results -->

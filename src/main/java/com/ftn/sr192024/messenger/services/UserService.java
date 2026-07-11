@@ -2,6 +2,7 @@ package com.ftn.sr192024.messenger.services;
 
 import com.ftn.sr192024.messenger.models.RegistrationRequest;
 import com.ftn.sr192024.messenger.models.RegistrationStatus;
+import com.ftn.sr192024.messenger.models.RoleEnum;
 import com.ftn.sr192024.messenger.models.User;
 import com.ftn.sr192024.messenger.models.dto.FilterUserRequest;
 import com.ftn.sr192024.messenger.models.dto.ProfileUpdateRequest;
@@ -155,6 +156,8 @@ public class UserService {
         dto.setImage(user.getImage());
         dto.setLastSeen(user.getLastOnline());
         dto.setOnline(isUserOnline(user));
+        dto.setRole(user.getRole());
+        dto.setActive(user.isActive());
         return dto;
     }
 
@@ -164,7 +167,7 @@ public class UserService {
     }
 
     public Optional<User> findByUsername(String username) {
-        User user = userRepository.findByUsernameAndRegisteredIsTrue(username).orElse(null);
+        User user = userRepository.findByUsernameAndRegisteredIsTrueAndActiveIsTrue(username).orElse(null);
 
         assert user != null;
         user.setImage(localImageRepo.getImage(user.getId()));
@@ -232,5 +235,19 @@ public class UserService {
         assert request != null;
         request.setStatus(RegistrationStatus.REJECTED);
         return requestRepository.save(request);
+    }
+
+    public User updateUserRole(UUID userId, String newRole) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        user.setRole(RoleEnum.valueOf(newRole));
+        return userRepository.save(user);
+    }
+
+    public User toggleUserActive(UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        user.setActive(!user.isActive());   // assuming getter is isActive()
+        return userRepository.save(user);
     }
 }

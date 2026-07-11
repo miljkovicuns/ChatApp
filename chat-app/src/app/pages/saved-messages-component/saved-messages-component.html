@@ -1,0 +1,38 @@
+<div class="saved-messages-container">
+  <div class="header">
+    <h2>⭐ Saved Messages</h2>
+    <button class="back-btn" (click)="goBack()">← Back</button>
+  </div>
+
+  <div class="saved-list">
+    @if (isLoading) {
+      <div class="loading">Loading saved messages...</div>
+    } @else if (savedMessages.length === 0) {
+      <div class="empty-state">
+        <span class="empty-icon">📭</span>
+        <p>No saved messages yet.</p>
+        <p class="hint">Go to any chat and click the star icon on a message to save it.</p>
+      </div>
+    } @else {
+      @for (item of savedMessages; track item.id) {
+        <div class="saved-item" (click)="openChat(item.chatId, item.messageId)">
+          <div class="item-content">
+            <div class="message-preview">
+              <span class="chat-name">{{ item.chatName }}</span>
+              <span class="sender">{{ item.senderUsername }}</span>
+              <span class="message-text">{{ item.messageContent }}</span>
+            </div>
+            <div class="meta">
+              <span class="message-date">{{ item.messageDate | date:'medium' }}</span>
+              <span class="saved-date">Saved: {{ item.savedAt | date:'medium' }}</span>
+            </div>
+          </div>
+        </div>
+      }
+      <!-- Pagination / Load More -->
+      @if (hasMore) {
+        <button class="load-more" (click)="loadMore()">Load more</button>
+      }
+    }
+  </div>
+</div>

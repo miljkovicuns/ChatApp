@@ -7,10 +7,13 @@ import com.ftn.sr192024.messenger.models.dto.*;
 import com.ftn.sr192024.messenger.services.ChatService;
 import com.ftn.sr192024.messenger.services.MessageService;
 import com.ftn.sr192024.messenger.services.ReactionService;
+import com.ftn.sr192024.messenger.services.SavedMessageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
@@ -21,7 +24,7 @@ import java.util.stream.Collectors;
 
 import static com.ftn.sr192024.messenger.security.SecurityUtils.getCurrentUserId;
 
-@Controller
+@RestController
 @RequestMapping("/chats")
 @RequiredArgsConstructor
 public class ChatController {
@@ -31,6 +34,8 @@ public class ChatController {
     private final MessageService messageService;
 
     private final ReactionService reactionService;
+
+    private final SavedMessageService savedMessageService;
 
     @GetMapping("/my-chats")
     public ResponseEntity<List<Chat>> getMyChats() {
@@ -73,7 +78,7 @@ public class ChatController {
     @GetMapping("/messages/{chatId}")
     public ResponseEntity<List<MessageResponseDto>> getChatMessages(@PathVariable UUID chatId) {
         UUID currentUserId = getCurrentUserId();
-        List<Message> messages = messageService.findByChatId(chatId);
+        List<Message> messages = messageService.findByChatId(chatId,currentUserId);
 
         // Convert each message to DTO with status for current user
         List<MessageResponseDto> messageDtos = messages.stream()
@@ -112,5 +117,29 @@ public class ChatController {
         ReactionType reactionType = ReactionType.valueOf(request.get("reactionType"));
         List<ReactionResponseDto> reactions = reactionService.toggleReaction(messageId, userId, reactionType);
         return ResponseEntity.ok(reactions);
+    }
+
+    @PostMapping("/messages/save")
+    public ResponseEntity<SavedMessageDto> saveMessage(@RequestParam UUID messageId) {
+        UUID userId = getCurrentUserId();
+        savedMessageService.saveMessage(userId, messageId);
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/messages/{messageId}/save")
+    public ResponseEntity<Void> unsaveMessage(@PathVariable UUID messageId) {
+        UUID userId = getCurrentUserId();
+        savedMessageService.unsaveMessage(userId, messageId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/messages/saved")
+    public ResponseEntity<Page<SavedMessageDto>> getSavedMessages(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        UUID userId = getCurrentUserId();
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "savedAt"));
+        Page<SavedMessageDto> savedMessages = savedMessageService.getSavedMessagesDto(userId, pageable);
+        return ResponseEntity.ok(savedMessages);
     }
 }

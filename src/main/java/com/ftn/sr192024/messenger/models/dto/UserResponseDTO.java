@@ -1,5 +1,6 @@
 package com.ftn.sr192024.messenger.models.dto;
 
+import com.ftn.sr192024.messenger.models.RoleEnum;
 import com.ftn.sr192024.messenger.models.User;
 import lombok.Data;
 import lombok.Getter;
@@ -22,6 +23,8 @@ public class UserResponseDTO {
     private byte[] image;
     private LocalDateTime lastSeen;
     private boolean online;
+    private RoleEnum role;
+    private boolean active;
 
     // For pagination metadata
     private boolean hasImage;

@@ -78,4 +78,7 @@ public class User {
     public void updateLastOnline() {
         this.lastOnline = LocalDateTime.now();
     }
+
+    @Column(name = "active", nullable = false)
+    private boolean active = true;
 }

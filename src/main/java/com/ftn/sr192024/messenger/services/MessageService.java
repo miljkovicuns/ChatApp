@@ -7,6 +7,7 @@ import com.ftn.sr192024.messenger.models.dto.SendMessageDto;
 import com.ftn.sr192024.messenger.repository.ChatRepository;
 import com.ftn.sr192024.messenger.repository.MessageReadStatusRepository;
 import com.ftn.sr192024.messenger.repository.MessageRepository;
+import com.ftn.sr192024.messenger.repository.SavedMessageRepository;
 import com.ftn.sr192024.messenger.security.SecurityUtils;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -28,9 +29,14 @@ public class MessageService {
     private final UserService userService;
     private final ChatUpdateService chatUpdateService; // Only dependency needed
     private final ChatRepository chatRepository;
+    private final SavedMessageRepository savedMessageRepository;
 
-    public List<Message> findByChatId(UUID chatID) {
+    public List<Message> findByChatId(UUID chatID,UUID userId) {
         return messageRepository.findByChatIdOrderByDateOfSendingAsc(chatID).orElse(null);
+    }
+
+    public Optional<Message> findById(UUID id) {
+        return messageRepository.findById(id);
     }
 
     @Transactional

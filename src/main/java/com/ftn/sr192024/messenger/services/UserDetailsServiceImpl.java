@@ -23,7 +23,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(@NonNull String username) throws UsernameNotFoundException {
-        User user = userRepository.findByUsernameAndRegisteredIsTrue(username)
+        User user = userRepository.findByUsernameAndRegisteredIsTrueAndActiveIsTrue(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
         user.setImage(localImageRepo.getImage(user.getId()));
         // Return CustomUserDetails instead of Spring's default User
