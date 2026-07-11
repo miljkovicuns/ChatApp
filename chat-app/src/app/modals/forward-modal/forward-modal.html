@@ -1,0 +1,62 @@
+@if (isOpen) {
+  <div class="modal-overlay" (click)="closeModal()">
+    <div class="modal-container" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>➡️ Forward Message</h2>
+        <button class="close-btn" (click)="closeModal()">✕</button>
+      </div>
+
+      <div class="modal-body">
+        @if (isLoading) {
+          <div class="loading-state">
+            <div class="spinner"></div>
+            <p>Loading chats...</p>
+          </div>
+        } @else {
+          <p class="forward-hint">Select a chat to forward this message to:</p>
+
+          @if (availableChats.length === 0) {
+            <div class="empty-state">
+              <span class="empty-icon">💬</span>
+              <p>No other chats available.</p>
+              <p class="empty-hint">You can only forward to chats you're in.</p>
+            </div>
+          } @else {
+            <div class="forward-chat-list">
+              @for (chat of availableChats; track chat.id) {
+                <div class="forward-chat-item" (click)="forwardToChat(chat.id)">
+                  <div class="chat-avatar-small">
+                    @if (chat.groupChat) {
+                      <span>{{ getChatAvatar(chat) }}</span>
+                    } @else {
+                      @if (getUserAvatar(getOtherParticipant(chat))) {
+                        <img [src]="getUserAvatar(getOtherParticipant(chat))" class="avatar-image-small">
+                      } @else {
+                        <span>{{ getChatDisplayName(chat).charAt(0) | uppercase }}</span>
+                      }
+                    }
+                  </div>
+                  <div class="chat-info">
+                    <div class="chat-name">{{ getChatDisplayName(chat) }}</div>
+                    <div class="chat-type">
+                      @if (chat.groupChat) {
+                        <span class="group-badge">👥 Group</span>
+                      } @else {
+                        <span class="direct-badge">💬 Direct</span>
+                      }
+                    </div>
+                  </div>
+                  <button class="forward-select-btn">➡️ Forward</button>
+                </div>
+              }
+            </div>
+          }
+        }
+      </div>
+
+      <div class="modal-footer">
+        <button class="cancel-btn" (click)="closeModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+}

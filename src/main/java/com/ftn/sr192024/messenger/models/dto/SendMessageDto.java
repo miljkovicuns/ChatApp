@@ -11,4 +11,6 @@ public class SendMessageDto {
     UUID chatId;
     String content;
     UUID senderId;
+    UUID replyToId;
+    UUID forwardedFromId;
 }

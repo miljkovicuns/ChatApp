@@ -13,8 +13,8 @@ export interface Message {
   senderUsername: string;
   chat: Chat;
   replyTo: Message | null;
-  reactions: MessageReaction[];
   forwardedFrom: Message | null;
+  reactions: MessageReaction[];
   own?: boolean;
   status:MessageStatus
   deliveredAt?: string

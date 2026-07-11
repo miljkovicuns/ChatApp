@@ -22,6 +22,8 @@ public class MessageResponseDto {
     private boolean isOwn;  // Whether the message belongs to the current user
     private String status;
     private List<ReactionResponseDto> reactions;
+    private MessageResponseDto replyTo;      // nested DTO
+    private MessageResponseDto forwardedFrom; // nested DTO
 
     private static final DateTimeFormatter FORMATTER =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -65,6 +67,16 @@ public class MessageResponseDto {
         }
 
         dto.setReactions(ReactionResponseDto.fromEntities(message.getReactions()));
+        if (message.getReplyTo() != null) {
+            message.getReplyTo().setReplyTo(null);
+            dto.setReplyTo(fromEntity(message.getReplyTo(), currentUserId));
+        }
+        if (message.getForwardedFrom() != null) {
+            assert message.getReplyTo() != null;
+            message.getReplyTo().setReplyTo(null);
+            message.getForwardedFrom().setForwardedFrom(null);
+            dto.setForwardedFrom(fromEntity(message.getForwardedFrom(), currentUserId));
+        }
 
         return dto;
     }

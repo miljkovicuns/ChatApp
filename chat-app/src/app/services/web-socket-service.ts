@@ -15,7 +15,7 @@ export class WebSocketService {
     reconnectDelay: 5000,
     heartbeatIncoming: 4000,
     heartbeatOutgoing: 4000,
-    debug: (str) => console.log('🔍 STOMP debug:', str)
+    // debug: (str) => console.log('🔍 STOMP debug:', str)
   })
   private connectedSubject = new BehaviorSubject<boolean>(false)
   private messageSubject = new BehaviorSubject<any>(null)
@@ -33,24 +33,19 @@ export class WebSocketService {
 
   connect(): void {
     try {
-      // ✅ Use SockJS (handles CORS better)
-      console.log('🔄 Attempting to connect to WebSocket...');
 
       // const socket = new SockJS('ws://localhost:8080/ws');
 
       this.stompClient.onConnect = () => {
         this.connectedSubject.next(true);
-        console.log('STOMP connected successfully');
 
         // Subscribe to user notifications
         this.stompClient?.subscribe('/user/queue/notifications', (message) => {
-          console.log('Notification received:', message.body);
         })
 
         this.stompClient?.subscribe("/user/queue/delivery", message => {
           try {
             const delivery = JSON.parse(message.body);
-            console.log('📤 Delivery update:', delivery);
             this.deliverySubject.next(delivery);
           } catch (error) {
             console.error('Error parsing delivery update:', error);
@@ -65,7 +60,6 @@ export class WebSocketService {
 
       this.stompClient.onDisconnect = () => {
         this.connectedSubject.next(false);
-        console.log('STOMP disconnected');
       };
 
       this.stompClient.activate();
@@ -103,13 +97,11 @@ export class WebSocketService {
     }
 
     this.currentChatId = chatId;
-    console.log(`📡 Subscribing to chat: ${chatId}`);
 
     // Subscribe to chat messages
     this.stompClient.subscribe(`/topic/chat/${chatId}`, (message) => {
       try {
         const msg = JSON.parse(message.body);
-        console.log('📨 Chat message received:', msg);
         this.messageSubject.next(msg);
       } catch (error) {
         console.error('Error parsing message:', error);
@@ -120,7 +112,6 @@ export class WebSocketService {
     this.stompClient.subscribe(`/topic/chat/${chatId}/unread`, (message) => {
       try {
         const update = JSON.parse(message.body);
-        console.log('📊 Unread update received:', update);
         this.unreadSubject.next(update);
       } catch (error) {
         console.error('Error parsing unread update:', error);
@@ -130,7 +121,6 @@ export class WebSocketService {
     this.stompClient.subscribe(`/topic/chat/${chatId}/read`, message => {
       try {
         const receipt = JSON.parse(message.body);
-        console.log('👁️ Read receipt received:', receipt);
         this.readReceiptSubject.next(receipt);
       } catch (error) {
         console.error('Error parsing read receipt:', error);
@@ -140,7 +130,6 @@ export class WebSocketService {
     this.stompClient.subscribe(`/topic/chat/${chatId}/typing`, message => {
       try {
         const typing = JSON.parse(message.body);
-        console.log('⌨️ Typing indicator received:', typing);
         this.typingSubject.next(typing);
       } catch (error) {
         console.error('Error parsing typing indicator:', error);
@@ -150,7 +139,6 @@ export class WebSocketService {
     this.stompClient.subscribe(`/topic/chat/${chatId}/reactions`, message => {
       try {
         const update = JSON.parse(message.body);
-        console.log('😀 Reaction update received:', update);
         this.reactionSubject.next(update);
       } catch (error) {
         console.error('Error parsing reaction update:', error);
@@ -163,22 +151,21 @@ export class WebSocketService {
   }
 
   // ✅ Fix: Proper message sending format
-  sendMessage(chatId: string, content: string, senderId: string): void {
+  sendMessage(chatId: string, content: string, senderId: string, replyToId?: string, forwardedFromId?: string): void {
     if (!this.stompClient?.connected) {
       console.warn('⚠️ STOMP is not connected');
       return;
     }
 
-    const message = {
+    const payload: any = {
       chatId: chatId,
       content: content,
       senderId: senderId
     };
 
-    this.stompClient.publish({
-      destination: '/app/chat.sendMessage',
-      body: JSON.stringify(message)
-    });
+    if (replyToId) payload.replyToId = replyToId;
+    if (forwardedFromId) payload.forwardedFromId = forwardedFromId;
+    this.stompClient.publish({ destination: '/app/chat.sendMessage', body: JSON.stringify(payload) });
   }
 
   // ✅ Fix: Mark as read with correct format
@@ -190,7 +177,6 @@ export class WebSocketService {
 
     const request = { chatId: chatId };
 
-    console.log('📤 Marking as read:', request);
 
     this.stompClient.publish({
       destination: '/app/chat.markRead',

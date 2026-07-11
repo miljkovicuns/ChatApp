@@ -60,6 +60,16 @@ public class MessageService {
         message.setContent(sendMessageDto.getContent().trim());
         message.setDateOfSending(LocalDateTime.now());
         List<MessageReadStatus> statuses = new ArrayList<>();
+        if (sendMessageDto.getReplyToId() != null) {
+            Message replyTo = messageRepository.findById(sendMessageDto.getReplyToId())
+                    .orElseThrow(() -> new RuntimeException("Reply-to message not found"));
+            message.setReplyTo(replyTo);
+        }
+        if (sendMessageDto.getForwardedFromId() != null) {
+            Message forwardedFrom = messageRepository.findById(sendMessageDto.getForwardedFromId())
+                    .orElseThrow(() -> new RuntimeException("Forwarded-from message not found"));
+            message.setForwardedFrom(forwardedFrom);
+        }
         if(chat.isGroupChat()) {
             List<User> participants = chat.getParticipants().stream().filter(user -> {
                 assert sender != null;

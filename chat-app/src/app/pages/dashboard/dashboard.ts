@@ -26,11 +26,12 @@ import {ProfileModalComponent} from '../../modals/profile-modal-component/profil
 import {CreateChatModalComponent} from '../../modals/create-chat-modal-component/create-chat-modal-component';
 import {Router, RouterLink, ActivatedRoute} from '@angular/router';
 import {Page} from '../../models/page';
+import {ForwardModal} from '../../modals/forward-modal/forward-modal';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FormsModule, ProfileModalComponent, CreateChatModalComponent, RouterLink],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, ProfileModalComponent, CreateChatModalComponent, RouterLink, ForwardModal],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css'
 })
@@ -91,7 +92,7 @@ export class Dashboard implements OnInit,OnDestroy {
 
   // Data containers (will be populated from API)
   chats: Chat[] = [];
-  messages: any[] = [];
+  messages: Message[] = [];
 
 
   // Settings
@@ -210,7 +211,6 @@ export class Dashboard implements OnInit,OnDestroy {
       if (this.currentUser) {
         this.userService.updateLastSeen().subscribe({
           next: () => {
-            console.log('Heartbeat sent');
           },
           error: (err) => {
             console.error('Heartbeat failed:', err);
@@ -378,7 +378,6 @@ export class Dashboard implements OnInit,OnDestroy {
               status: msg.status || "SENT",
               reactions: msg.reactions || [],
             }));
-            console.log("First message body: " + messages[0].content  + " First message status: " + messages[0].status + " First message is own: " + messages[0].own)
             this.isLoadingMessages = false;
             this.cdr.detectChanges();
           }else {
@@ -602,9 +601,6 @@ export class Dashboard implements OnInit,OnDestroy {
   }
 
   loadUnreadCounts() {
-    console.log('🔄 loadUnreadCounts called');
-    console.log('📊 Current chats:', this.chats);
-    console.log('📊 Chat IDs:', this.chats.map(c => c.id));
     this.chatService.getAllUnreadCounts()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
@@ -694,9 +690,8 @@ export class Dashboard implements OnInit,OnDestroy {
     // Mark all messages in the chat as read (except own)
     const now = new Date().toISOString();
     this.messages.forEach(msg => {
-      if (!msg.isOwn && msg.sender?.id !== receipt.userId) {
+      if (!msg.own && msg.sender?.id !== receipt.userId) {
         msg.status = 'READ';
-        msg.readAt = now;
       }
     });
     this.cdr.detectChanges();
@@ -717,13 +712,18 @@ export class Dashboard implements OnInit,OnDestroy {
       return;
     }
 
+    // Send with reply ID if replying
     this.webSocketService.sendMessage(
       this.selectedChat.id,
       this.newMessage,
-      this.currentUser.id
+      this.currentUser.id,
+      this.replyingToMessageId ?? undefined,
+      this.forwardingMessageId ?? undefined
     );
-
+    // Clear the input and reset reply state
     this.newMessage = '';
+    this.replyingToMessageId = null;  // ← Clear reply state
+    this.forwardingMessageId = null;
     this.cdr.detectChanges();
   }
 
@@ -750,10 +750,11 @@ export class Dashboard implements OnInit,OnDestroy {
 
     if (this.selectedChat && message.chatId === this.selectedChat.id) {
       const exists = this.messages.some(m => m.id === message.id);
+      console.log("Sender id: " + message.sender?.id + "Current id:" + this.currentUser.id + " Exists: " + exists)
       if (!exists) {
         this.messages.push({
           ...message,
-          isOwn: message.senderId === this.currentUser?.id,
+          own: message.senderId === this.currentUser?.id,
           dateOfSending: message.dateOfSending || new Date().toISOString(),
           status: message.status,
           reactions: message.reactions || [],
@@ -884,7 +885,6 @@ export class Dashboard implements OnInit,OnDestroy {
   //Profile Modal
   openProfileModal() {
     this.showProfileModal = true;
-    console.log("Open profile modal")
     this.profileError = null;
     this.profileImagePreview = this.getUserAvatar(this.currentUser);
     this.profileForm.patchValue({
@@ -956,7 +956,6 @@ export class Dashboard implements OnInit,OnDestroy {
           next: (response) => {
             this.isLoadingPM = false;
             this.showSuccess('Password updated successfully!');
-            console.log('Password update response:', response);
           },
           error: (error) => {
             this.isLoadingPM = false;
@@ -974,7 +973,6 @@ export class Dashboard implements OnInit,OnDestroy {
 
   showSuccess(message: string) {
     // Implement toast/notification
-    console.log('Success:', message);
   }
 
   showError(message: string) {
@@ -1370,5 +1368,63 @@ export class Dashboard implements OnInit,OnDestroy {
 
   goToAnalytics() {
     this.router.navigate(['/admin/analytics']);
+  }
+
+  replyingToMessageId: string | undefined | null;
+
+  startReply(messageId: string) {
+    this.replyingToMessageId = messageId;
+    // Focus the input after a short delay
+    setTimeout(() => {
+      const input = document.querySelector('.message-input-area input') as HTMLInputElement;
+      if (input) {
+        input.focus();
+      }
+    }, 100);
+  }
+
+  /**
+   * Cancel the current reply
+   */
+  cancelReply() {
+    this.replyingToMessageId = null;
+  }
+
+  /**
+   * Get a preview of the message being replied to
+   */
+  getReplyPreview(): string {
+    const msg = this.messages.find(m => m.id === this.replyingToMessageId);
+    if (!msg) return '';
+    const content = msg.content || '';
+    return content.length > 40 ? content.substring(0, 40) + '...' : content;
+  }
+
+  // Forward state
+  forwardingMessageId: string | null = null;
+  showForwardModal = false;
+
+  startForward(messageId: string) {
+    this.forwardingMessageId = messageId;
+    this.showForwardModal = true;
+  }
+
+  handleForward(event: { chatId: string; messageId: string }) {
+    // Forward the message
+    const originalMsg = this.messages.find(m => m.id === event.messageId);
+    if (!originalMsg || !this.currentUser?.id) return;
+
+    this.webSocketService.sendMessage(
+      event.chatId,
+      originalMsg.content,
+      this.currentUser.id,
+      undefined,
+      event.messageId
+    );
+  }
+
+  closeForwardModal() {
+    this.showForwardModal = false;
+    this.forwardingMessageId = null;
   }
 }

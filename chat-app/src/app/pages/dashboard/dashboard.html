@@ -213,6 +213,17 @@
                [class.own-message]="message.own"
                [attr.data-message-id]="message.id">
             <div class="message-content">
+              <!-- Reply/Forward labels -->
+              @if (message.replyTo) {
+                <div class="reply-indicator">
+                  ↩️ Replying to <span class="reply-preview">{{ message.replyTo.content | slice:0:30 }}...</span>
+                </div>
+              }
+              @if (message.forwardedFrom) {
+                <div class="forward-indicator">
+                  ➡️ Forwarded from <span class="forward-sender">{{ message.forwardedFrom.sender.username }}</span>
+                </div>
+              }
               <!-- Message text with search highlight -->
               <div class="message-text" [innerHTML]="highlightText(message.content, messageSearchQuery)"></div>
 
@@ -263,6 +274,14 @@
                         title="Save/Unsave message">
                   {{ message.isSaved ? '⭐' : '☆' }}
                 </button>
+                <!-- Reply button -->
+                <button class="reply-btn" (click)="startReply(message.id)" title="Reply">
+                  ↩️
+                </button>
+                <!-- Forward button -->
+                <button class="forward-btn" (click)="startForward(message.id)" title="Forward">
+                  ➡️
+                </button>
               </div>
 
               <!-- Reaction picker -->
@@ -311,6 +330,10 @@
         </div>
       </ng-template>
 
+      <div class="replying-indicator" *ngIf="replyingToMessageId">
+        <span>↩️ Replying to <strong>{{ getReplyPreview() }}</strong></span>
+        <button (click)="cancelReply()" class="cancel-reply-btn">✕</button>
+      </div>
       <div class="message-input-area" *ngIf="selectedChat">
         <div class="input-group">
           <input
@@ -432,3 +455,17 @@
   (filtersReset)="onFiltersReset()"
   (searchChanged)="onSearchChanged($event)">
 </app-create-chat-modal>
+
+
+@if (selectedChat) {
+  <!-- Forward Modal -->
+  <app-forward-modal
+    [isOpen]="showForwardModal"
+    [messageId]="forwardingMessageId"
+    [currentUserId]="currentUser?.id"
+    [currentChatId]="selectedChat.id"
+    [chats]="chats"
+    (close)="closeForwardModal()"
+    (forward)="handleForward($event)">
+  </app-forward-modal>
+}
