@@ -31,7 +31,7 @@ public class MessageResponseDto {
     /**
      * Convert Message entity to MessageResponseDto
      * @param message The message entity
-     * @param currentUserId The ID of the current user (to determine if message is own)
+     * @param currentUserId The ID of the current user (to determine if message is owned by current user)
      * @return MessageResponseDto
      */
     public static MessageResponseDto fromEntity(Message message, UUID currentUserId) {
@@ -72,8 +72,6 @@ public class MessageResponseDto {
             dto.setReplyTo(fromEntity(message.getReplyTo(), currentUserId));
         }
         if (message.getForwardedFrom() != null) {
-            assert message.getReplyTo() != null;
-            message.getReplyTo().setReplyTo(null);
             message.getForwardedFrom().setForwardedFrom(null);
             dto.setForwardedFrom(fromEntity(message.getForwardedFrom(), currentUserId));
         }

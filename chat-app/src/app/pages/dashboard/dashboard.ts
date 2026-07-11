@@ -378,6 +378,7 @@ export class Dashboard implements OnInit,OnDestroy {
               status: msg.status || "SENT",
               reactions: msg.reactions || [],
             }));
+            console.log(this.messages[0].forwardedFrom)
             this.isLoadingMessages = false;
             this.cdr.detectChanges();
           }else {

@@ -44,6 +44,7 @@ export class ForwardModal {
     this.isLoading = true;
     // Filter out the current chat
     this.availableChats = this.chats.filter(c => c.id !== this.currentChatId);
+    console.log("Available chats: " + this.availableChats + " All Chats: " + this.chats.length)
     this.isLoading = false;
     this.cdr.detectChanges();
   }
