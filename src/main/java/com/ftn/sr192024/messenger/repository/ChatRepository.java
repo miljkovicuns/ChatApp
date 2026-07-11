@@ -35,4 +35,11 @@ public interface ChatRepository extends JpaRepository<Chat, UUID> {
     boolean isUserParticipant(@Param("chatId") UUID chatId, @Param("userId") UUID userId);
 
     long countByGroupChatTrueAndDateCreatedBetween(LocalDateTime start, LocalDateTime end);
+
+    @Query(value = "SELECT DATE_FORMAT(c.date_created, :dateFormat) as period, COUNT(c.id) as cnt " +
+            "FROM chat c WHERE c.date_created BETWEEN :start AND :end AND c.group_chat = true " +
+            "GROUP BY period ORDER BY period", nativeQuery = true)
+    List<Object[]> countGroupsCreatedGroupedByPeriod(@Param("start") LocalDateTime start,
+                                                     @Param("end") LocalDateTime end,
+                                                     @Param("dateFormat") String dateFormat);
 }

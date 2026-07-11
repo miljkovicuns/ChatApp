@@ -19,7 +19,7 @@
       <input type="datetime-local" [(ngModel)]="endDate" (change)="onDateChange()" />
     </div>
     <div class="aggregation">
-      <label>Group by:</label>
+      <label>Group By:</label>
       <select [(ngModel)]="aggregationLevel" (change)="loadAnalytics()">
         <option value="daily">Daily</option>
         <option value="weekly">Weekly</option>
@@ -114,6 +114,31 @@
           </tbody>
         </table>
       </div>
+    </div>
+    <div class="time-series-section">
+      <h3>📈 Trend Over Time</h3>
+      <table class="time-series-table">
+        <thead>
+        <tr>
+          <th>Period</th>
+          <th>Total Users</th>
+          <th>Active Users</th>
+          <th>Messages</th>
+          <th>Groups Created</th>
+        </tr>
+        </thead>
+        <tbody>
+          @for (item of timeSeriesData; track item.period) {
+            <tr>
+              <td>{{ item.period }}</td>
+              <td>{{ item.totalUsers }}</td>
+              <td>{{ item.activeUsers }}</td>
+              <td>{{ item.totalMessages }}</td>
+              <td>{{ item.groupsCreated }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
     </div>
   } @else if (isLoading) {
     <div class="loading-state">

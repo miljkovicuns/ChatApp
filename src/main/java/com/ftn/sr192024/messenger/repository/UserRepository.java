@@ -41,4 +41,11 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     @Query("SELECT COUNT(u) FROM User u WHERE u.createdAt <= :end")
     long countByCreatedAtBeforeOrEqual(@Param("end") LocalDateTime end);
+
+    @Query(value = "SELECT DATE_FORMAT(u.created_at, :dateFormat) as period, COUNT(u.id) as cnt " +
+            "FROM users u WHERE u.created_at BETWEEN :start AND :end " +
+            "GROUP BY period ORDER BY period", nativeQuery = true)
+    List<Object[]> countNewUsersGroupedByPeriod(@Param("start") LocalDateTime start,
+                                                @Param("end") LocalDateTime end,
+                                                @Param("dateFormat") String dateFormat);
 }

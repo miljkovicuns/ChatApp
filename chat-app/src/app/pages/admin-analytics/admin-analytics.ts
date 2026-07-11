@@ -9,6 +9,7 @@ import { AdminService } from '../../services/admin-service';
 import { User } from '../../models/user';
 import { TopBarComponent } from '../top-bar-component/top-bar-component';
 import { AnalyticsSummaryDto } from '../../models/analytics-summary.dto';
+import {AnalyticsTimeSeriesDto} from '../../models/analytics-time-series-dto';
 
 @Component({
   selector: 'app-admin-analytics',
@@ -83,6 +84,7 @@ export class AdminAnalytics implements OnInit {
         next: (data) => {
           this.analytics = data;
           this.isLoading = false;
+
           this.cdr.detectChanges()
         },
         error: (err) => {
@@ -91,6 +93,7 @@ export class AdminAnalytics implements OnInit {
           this.isLoading = false;
         }
       });
+    this.loadTimeSeries();
   }
 
   onDateChange() {
@@ -108,5 +111,23 @@ export class AdminAnalytics implements OnInit {
 
   openSettings() {
     // optional
+  }
+
+  timeSeriesData: AnalyticsTimeSeriesDto[] = [];
+
+  loadTimeSeries() {
+    // use aggregationLevel from dropdown
+    this.adminService.getTimeSeriesAnalytics(
+      new Date(this.startDate).toISOString(),
+      new Date(this.endDate).toISOString(),
+      this.aggregationLevel
+    ).pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (data) => {
+          this.timeSeriesData = data;
+          this.cdr.detectChanges();
+        },
+        error: (err) => console.error('Error loading time series:', err)
+      });
   }
 }

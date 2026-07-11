@@ -4,6 +4,7 @@ import {HttpClient, HttpHeaders, HttpParams} from '@angular/common/http';
 import {Observable} from 'rxjs';
 import {User} from '../models/user';
 import {AnalyticsSummaryDto} from '../models/analytics-summary.dto';
+import {AnalyticsTimeSeriesDto} from '../models/analytics-time-series-dto';
 
 @Service()
 export class AdminService {
@@ -40,5 +41,13 @@ export class AdminService {
       .set('startDate', startDate)
       .set('endDate', endDate);
     return this.http.get<AnalyticsSummaryDto>(`${this.apiUrl}/analytics`, { params });
+  }
+
+  getTimeSeriesAnalytics(startDate: string, endDate: string, groupBy: string): Observable<AnalyticsTimeSeriesDto[]> {
+    const params = new HttpParams()
+      .set('startDate', startDate)
+      .set('endDate', endDate)
+      .set('groupBy', groupBy);
+    return this.http.get<AnalyticsTimeSeriesDto[]>(`${this.apiUrl}/analytics/time-series`, { params });
   }
 }

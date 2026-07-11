@@ -73,4 +73,18 @@ public interface MessageRepository extends JpaRepository<Message, UUID> {
     List<Object[]> findTopGroupsByMessageCount(@Param("start") LocalDateTime start,
                                                @Param("end") LocalDateTime end,
                                                @Param("limit") int limit);
+
+    @Query(value = "SELECT DATE_FORMAT(m.date_of_sending, :dateFormat) as period, COUNT(m.id) as cnt " +
+            "FROM messages m WHERE m.date_of_sending BETWEEN :start AND :end " +
+            "GROUP BY period ORDER BY period", nativeQuery = true)
+    List<Object[]> countMessagesGroupedByPeriod(@Param("start") LocalDateTime start,
+                                                @Param("end") LocalDateTime end,
+                                                @Param("dateFormat") String dateFormat);
+
+    @Query(value = "SELECT DATE_FORMAT(m.date_of_sending, :dateFormat) as period, COUNT(DISTINCT m.sender) as cnt " +
+            "FROM messages m WHERE m.date_of_sending BETWEEN :start AND :end " +
+            "GROUP BY period ORDER BY period", nativeQuery = true)
+    List<Object[]> countActiveUsersGroupedByPeriod(@Param("start") LocalDateTime start,
+                                                   @Param("end") LocalDateTime end,
+                                                   @Param("dateFormat") String dateFormat);
 }
