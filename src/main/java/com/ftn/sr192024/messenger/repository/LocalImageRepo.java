@@ -10,9 +10,9 @@ import java.util.UUID;
 
 @Repository
 public class LocalImageRepo {
-    public byte[] getImage(UUID userId) {
+    public byte[] getImage(UUID id) {
         Path dirPath = Paths.get("img");
-        Path path = dirPath.resolve(userId.toString());
+        Path path = dirPath.resolve(id.toString());
         if (Files.exists(path)) {
             try {
                 return Files.readAllBytes(path);
@@ -23,10 +23,10 @@ public class LocalImageRepo {
         return null;
     }
 
-    public void saveImage(byte[] fileBytes, UUID userId) {
+    public void saveImage(byte[] fileBytes, UUID id) {
         if (fileBytes != null) {
             Path dirPath = Paths.get("img");
-            Path filePath = dirPath.resolve(userId.toString());
+            Path filePath = dirPath.resolve(id.toString());
             try {
                 if (!Files.exists(dirPath)) {
                     Files.createDirectory(dirPath);

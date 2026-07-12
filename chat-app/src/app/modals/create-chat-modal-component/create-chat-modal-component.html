@@ -1,9 +1,9 @@
 @if (isOpen) {
-  <div class="modal-overlay" (click)="onClose()">
+  <div class="modal-overlay" (click)="closeModal()">
     <div class="modal-container" (click)="$event.stopPropagation()">
       <div class="modal-header">
         <h2>Create New Chat</h2>
-        <button class="close-btn" (click)="onClose()">✕</button>
+        <button class="close-btn" (click)="closeModal()">✕</button>
       </div>
 
       <div class="modal-body">
@@ -207,6 +207,14 @@
             <div class="form-group">
               <label>Description (optional)</label>
               <textarea formControlName="description" placeholder="Describe the group purpose" rows="3"></textarea>
+            </div>
+
+            <div class="form-group">
+              <label>Group Image (optional)</label>
+              <input type="file" (change)="onGroupImageSelected($event)" accept="image/*" />
+              @if (groupImagePreview) {
+                <img [src]="groupImagePreview" class="group-image-preview" />
+              }
             </div>
 
             <div class="selected-participants-summary">

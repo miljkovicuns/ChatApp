@@ -14,4 +14,5 @@ export interface User {
   hasImage: boolean;
   formattedLastSeen: string;
   active: boolean
+  bio?: string
 }

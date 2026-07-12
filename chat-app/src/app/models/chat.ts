@@ -9,4 +9,5 @@ export interface Chat {
   dateCreated: Date;
   lastMessageAt?: Date;
   unread: number
+  image?: string
 }

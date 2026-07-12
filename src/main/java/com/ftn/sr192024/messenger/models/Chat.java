@@ -41,4 +41,6 @@ public class Chat {
     private LocalDateTime dateCreated;
 
     private LocalDateTime lastMessageAt;
+
+    private byte[] image;
 }

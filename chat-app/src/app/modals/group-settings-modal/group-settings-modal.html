@@ -1,0 +1,112 @@
+@if (isOpen && chat) {
+  <div class="modal-overlay" (click)="closeModal()">
+    <div class="modal-container" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>⚙️ Group Settings</h2>
+        <button class="close-btn" (click)="closeModal()">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Error -->
+        @if (error) {
+          <div class="error-message">{{ error }}</div>
+        }
+
+        <!-- Group Details -->
+        <div class="settings-section">
+          <h3>Group Details</h3>
+          <div class="form-group">
+            <label>Group Name</label>
+            <input type="text" [(ngModel)]="editName" placeholder="Group name" />
+          </div>
+          <div class="form-group">
+            <label>Description</label>
+            <textarea [(ngModel)]="editDescription" rows="2" placeholder="Description"></textarea>
+          </div>
+          <div class="form-group">
+            <label>Group Image</label>
+            <input type="file" (change)="onImageSelected($event)" accept="image/*" />
+            @if (editImagePreview) {
+              <img [src]="editImagePreview" class="group-image-preview" />
+            }
+          </div>
+          <button class="save-btn" (click)="saveGroupDetails()" [disabled]="isLoading">
+            Save Details
+          </button>
+        </div>
+
+        <!-- Members -->
+        <div class="settings-section">
+          <h3>Members ({{ members.length }})</h3>
+          <div class="members-list">
+            @for (member of members; track member.userId) {
+              <div class="member-item">
+                <span class="member-name">{{ member.username }}</span>
+                <span class="member-role">
+                  <select [(ngModel)]="member.role" (change)="updateRole(member.userId, member.role)"
+                          [disabled]="member.userId === currentUserId || !(selfRole === 'ADMIN')">
+                    <option value="ADMIN">Admin</option>
+                    <option value="MODERATOR">Moderator</option>
+                    <option value="MEMBER">Member</option>
+                  </select>
+                </span>
+                @if (member.userId !== currentUserId && selfRole === 'ADMIN') {
+                  <button class="remove-btn" (click)="removeMember(member.userId)">✕</button>
+                }
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- Add Members -->
+        @if (selfRole === 'ADMIN') {
+          <div class="settings-section">
+            <h3>Add Members</h3>
+            <div class="search-add">
+              <input type="text" [(ngModel)]="searchUserQuery" placeholder="Search users..."
+                     (input)="searchUsers()" />
+              <div class="user-search-results">
+                @for (user of availableUsers; track user.id) {
+                  <div class="user-result" (click)="toggleUserSelection(user)"
+                       [class.selected]="isUserSelected(user)">
+                    {{ user.username }}
+                  </div>
+                }
+              </div>
+              @if (selectedUsers.length > 0) {
+                <div class="selected-users">
+                  @for (u of selectedUsers; track u.id) {
+                    <span>{{ u.username }}</span>
+                  }
+                </div>
+                <button class="add-btn" (click)="addSelectedMembers()" [disabled]="isLoading">
+                  Add Selected
+                </button>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- Invite Link -->
+        @if (selfRole === 'ADMIN') {
+          <div class="settings-section">
+            <h3>Invite Link</h3>
+            <button class="generate-btn" (click)="generateInviteLink()" [disabled]="generatingLink">
+              {{ generatingLink ? 'Generating...' : 'Generate Invite Link' }}
+            </button>
+            @if (inviteLink) {
+              <div class="invite-link">
+                <span>{{ inviteLink }}</span>
+                <button class="copy-btn" (click)="copyInviteLink()">📋 Copy</button>
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      <div class="modal-footer">
+        <button class="cancel-btn" (click)="closeModal()">Close</button>
+      </div>
+    </div>
+  </div>
+}

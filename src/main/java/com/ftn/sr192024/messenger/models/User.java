@@ -81,4 +81,7 @@ public class User {
 
     @Column(name = "active", nullable = false)
     private boolean active = true;
+
+    @Column(name = "bio")
+    private String bio;
 }

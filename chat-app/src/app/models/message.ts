@@ -19,4 +19,5 @@ export interface Message {
   status:MessageStatus
   deliveredAt?: string
   isSaved: boolean;
+  type: 'USER' | 'SYSTEM'
 }

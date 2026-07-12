@@ -6,6 +6,7 @@ import {RegistrationReview} from './pages/registration-review/registration-revie
 import {SavedMessagesComponent} from './pages/saved-messages-component/saved-messages-component';
 import {UserManagement} from './pages/user-management/user-management';
 import {AdminAnalytics} from './pages/admin-analytics/admin-analytics';
+import {InviteModal} from './modals/invite-modal/invite-modal';
 
 export const routes: Routes = [
   {path: '', component: Login},
@@ -14,5 +15,6 @@ export const routes: Routes = [
   {path: 'admin/registration-review', component: RegistrationReview},
   { path: 'saved-messages', component: SavedMessagesComponent },
   { path: 'admin/user-management', component: UserManagement },
-  { path: 'admin/analytics', component: AdminAnalytics }
+  { path: 'admin/analytics', component: AdminAnalytics },
+  { path: 'join', component: InviteModal}
 ];

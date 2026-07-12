@@ -34,7 +34,8 @@ export class ProfileModalComponent implements OnInit{
       email: ['', [Validators.required, Validators.email]],
       firstName: [''],
       lastName: [''],
-      phoneNumber: ['']
+      phoneNumber: [''],
+      bio: ['']
     });
   }
 
@@ -45,7 +46,8 @@ export class ProfileModalComponent implements OnInit{
         email: this.currentUser.email || '',
         firstName: this.currentUser.firstName || '',
         lastName: this.currentUser.lastName || '',
-        phoneNumber: this.currentUser.phoneNumber || ''
+        phoneNumber: this.currentUser.phoneNumber || '',
+        bio: this.currentUser.bio || ''
       });
     }
   }

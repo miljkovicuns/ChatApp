@@ -189,13 +189,16 @@ public class UserService {
 
         Optional.ofNullable(request.getPhoneNumber()).ifPresent(user::setPhoneNumber);
 
+        Optional.ofNullable(request.getBio()).ifPresent(user::setBio);
+
         user.setUpdatedAt(LocalDateTime.now());
 
         User savedUser = userRepository.save(user);
 
-        savedUser.setImage(image.getBytes());
-
-        localImageRepo.saveImage(image.getBytes(),savedUser.getId());
+        if (image != null) {
+            savedUser.setImage(image.getBytes());
+            localImageRepo.saveImage(image.getBytes(),savedUser.getId());
+        }
 
         UserDetails userDetails = new CustomUserDetails(savedUser);
         String jwtToken = jwtService.generateToken(userDetails);

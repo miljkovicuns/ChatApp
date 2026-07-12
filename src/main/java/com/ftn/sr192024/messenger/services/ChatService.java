@@ -3,6 +3,7 @@ package com.ftn.sr192024.messenger.services;
 import com.ftn.sr192024.messenger.models.Chat;
 import com.ftn.sr192024.messenger.models.User;
 import com.ftn.sr192024.messenger.repository.ChatRepository;
+import com.ftn.sr192024.messenger.repository.LocalImageRepo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -17,9 +18,16 @@ public class ChatService {
 
     private final ChatRepository chatRepository;
     private final UserService userService;
+    private final LocalImageRepo localImageRepo;
 
     public List<Chat> getUsersChats(UUID userId) {
-        return chatRepository.findByParticipantsId(userId);
+        List<Chat> chats = chatRepository.findByParticipantsId(userId);
+        for (Chat chat : chats) {
+                chat.setImage(localImageRepo.getImage(chat.getId()));
+                List<UUID> uuids = chat.getParticipants().stream().map(User::getId).toList();
+                chat.setParticipants(userService.findAllByIds(uuids));
+        }
+        return chats;
     }
 
     public Chat createDirectChat(List<UUID> participantIds) throws IOException {

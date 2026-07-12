@@ -201,4 +201,18 @@ public class MessageService {
                 message.getSender() != null ? message.getSender().getUsername() : "Unknown"
         );
     }
+
+    public void createSystemMessage(UUID chatId, String content) {
+        Chat chat = new Chat();
+        chat.setId(chatId);   // just a reference, no need to fetch full entity
+
+        Message systemMsg = new Message();
+        systemMsg.setChat(chat);
+        systemMsg.setSender(null);               // no sender
+        systemMsg.setContent(content);
+        systemMsg.setDateOfSending(LocalDateTime.now());
+        systemMsg.setType(MessageType.SYSTEM);
+
+        messageRepository.save(systemMsg);
+    }
 }

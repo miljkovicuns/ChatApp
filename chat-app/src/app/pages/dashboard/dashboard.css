@@ -280,6 +280,7 @@
 }
 
 .message {
+  max-width: 100%;
   display: flex;
   justify-content: flex-start;
 }
@@ -294,6 +295,7 @@
   border-radius: 12px;
   background: white;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  word-break: break-word;
 }
 
 .own-message .message-content {
@@ -2139,4 +2141,34 @@ textarea:focus {
   background: #fff3cd !important;
   transition: background 0.3s;
   border-radius: 8px;
+}
+
+/* System messages – centered, smaller, gray, italic */
+.system-message {
+  text-align: center;
+  font-size: 13px;
+  color: #7f8c8d;
+  font-style: italic;
+  background: transparent;
+  padding: 4px 12px;
+  margin: 6px 0;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 80%;
+  align-self: center;
+  background-color: rgba(0, 0, 0, 0.04);
+  backdrop-filter: blur(2px);
+}
+
+/* You can also add a small separator or icon */
+.system-message::before {
+  content: "🔄 ";
+  font-style: normal;
+  opacity: 0.6;
+}
+
+/* Dark theme support */
+.dark-theme .system-message {
+  color: #b0b8c0;
+  background-color: rgba(255, 255, 255, 0.06);
 }

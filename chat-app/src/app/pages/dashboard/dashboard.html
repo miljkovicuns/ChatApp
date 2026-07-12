@@ -8,12 +8,12 @@
     <div class="user-section">
       <div class="user-info">
         <div class="user-avatar-small">
-          @if (getUserAvatar(currentUser)){
+          @if (getUserAvatar(currentUser)) {
             <img [src]="getUserAvatar(currentUser)"
                  [alt]="currentUser?.username"
                  class="avatar-image">
           }
-          @if (!getUserAvatar(currentUser)){
+          @if (!getUserAvatar(currentUser)) {
             <span>
               {{ (currentUser?.username?.charAt(0) || 'U') | uppercase }}
             </span>
@@ -92,8 +92,9 @@
             <div class="chat-avatar">
               <!-- Avatar content -->
               <div class="avatar-content">
-                @if (chat.groupChat) {
-                  <span>{{ getChatAvatar(chat) }}</span>
+                @if (chat.groupChat && chat.image) {
+                  <img [src]="getChatAvatar(chat)"
+                       class="avatar-image-small">
                 } @else {
                   @if (getUserAvatar(getOtherParticipant(chat))) {
                     <img [src]="getUserAvatar(getOtherParticipant(chat))"
@@ -122,25 +123,36 @@
     <!-- Chat Area -->
     <div class="chat-area">
       <div class="chat-header" *ngIf="selectedChat">
+        @if (selectedChat && selectedChat.groupChat) {
+          <button class="icon-btn" (click)="openGroupSettings()" title="Group Settings">⚙️</button>
+        }
         <div class="chat-header-info">
           <div class="chat-avatar-large">
-            @if (selectedChat && !selectedChat.groupChat && getUserAvatar(getOtherParticipant(selectedChat))) {
+            @if (this.selectedChat && !this.selectedChat.groupChat && getUserAvatar(getOtherParticipant(this.selectedChat))) {
               <img [src]="getUserAvatar(getOtherParticipant(selectedChat))"
                    [alt]="selectedChat.name"
                    class="avatar-image-large">
-            }
-            @if (selectedChat && !selectedChat.groupChat && !getUserAvatar(getOtherParticipant(selectedChat))) {
-              <span>
-      {{ getOtherParticipant(selectedChat)?.username?.toUpperCase()?.charAt(0) || '?' }}
-    </span>
+            }@else if (this.selectedChat && !this.selectedChat.groupChat && !getUserAvatar(getOtherParticipant(this.selectedChat))) {
+              <span> {{ getOtherParticipant(selectedChat)?.username?.toUpperCase()?.charAt(0) || '?' }} </span>
+            } @else {
+              <img [src]="getChatAvatar(selectedChat)"
+                   [alt]="selectedChat.name"
+                   class="avatar-image-large">
             }
           </div>
           <div class="chat-details">
-            <h3>{{ getOtherParticipant(selectedChat)?.username }}</h3>
+            @if (!selectedChat.name) {
+              <h3>{{ getOtherParticipant(selectedChat)?.username }}</h3>
+            } @else {
+              <h3>{{ selectedChat.name }}</h3>
+            }
             <span class="online-status" [class.online]="getOtherParticipant(selectedChat)?.online">
         {{ getOtherParticipant(selectedChat)?.online ? 'Online' : 'Offline' }}
       </span>
           </div>
+          @if (!selectedChat.groupChat && getOtherParticipant(this.selectedChat)?.bio) {
+            <div style="color: darkgray"> {{ "Bio: " + getOtherParticipant(this.selectedChat)?.bio }}</div>
+          }
         </div>
 
         <!-- ✅ NEW: Message Search Bar -->
@@ -208,50 +220,62 @@
       <div class="messages-area" #messagesContainer *ngIf="selectedChat; else noChatSelected">
         <!-- ✅ Use currentMessages instead of messages -->
         @for (message of currentMessages; track message.id) {
-          <!-- Single message container -->
-          <div class="message"
-               [class.own-message]="message.own"
-               [attr.data-message-id]="message.id">
-            <div class="message-content">
-              <!-- Reply/Forward labels -->
-              @if (message.replyTo) {
-                <div class="reply-indicator">
-                  ↩️ Replying to <span class="reply-preview">{{ message.replyTo.content | slice:0:30 }}...</span>
-                </div>
-              }
-              @if (message.forwardedFrom) {
-                <div class="forward-indicator">
-                  ➡️ Forwarded
-                </div>
-              }
-              <!-- Message text with search highlight -->
-              <div class="message-text" [innerHTML]="highlightText(message.content, messageSearchQuery)"></div>
+          @if (message.type === 'SYSTEM') {
+            <div [class.system-message]="message.type === 'SYSTEM'">
+              {{ message.content }}
+            </div>
+          } @else {
+            <div class="message"
+                 [class.own-message]="message.own"
+                 [attr.data-message-id]="message.id">
+              <div class="message-content">
+                @if (this.selectedChat.groupChat) {
+                  <div style="margin-bottom: 5px">{{ message.senderUsername }}</div>
+                }
+                <!-- Reply/Forward labels -->
+                @if (message.replyTo) {
+                  <div class="reply-indicator">
+                    ↩️ Replying to <span class="reply-preview">{{ message.replyTo.content | slice:0:30 }}...</span>
+                  </div>
+                }
+                @if (message.forwardedFrom) {
+                  <div class="forward-indicator">
+                    ➡️ Forwarded
+                  </div>
+                }
+                @if (!message.content.startsWith("http")) {
+                  <!-- Message text with search highlight -->
+                  <div class="message-text" [innerHTML]="highlightText(message.content, messageSearchQuery)"></div>
+                } @else {
+                  <a class="message-text" [href]="message.content"
+                     [innerHTML]="highlightText(message.content, messageSearchQuery)"></a>
+                }
 
-              <!-- Reactions -->
-              @if (getGroupedReactions(message.reactions).length > 0) {
-                <div class="message-reactions">
-                  @for (group of getGroupedReactions(message.reactions); track group.type) {
-                    <button
-                      class="reaction-badge"
-                      [class.reacted]="group.reacted"
-                      (click)="addReaction(message.id, group.type, $event)"
-                      [title]="group.count + ' reaction(s)'">
-                      {{ getReactionEmoji(group.type) }} {{ group.count }}
-                    </button>
-                  }
-                </div>
-              }
+                <!-- Reactions -->
+                @if (getGroupedReactions(message.reactions).length > 0) {
+                  <div class="message-reactions">
+                    @for (group of getGroupedReactions(message.reactions); track group.type) {
+                      <button
+                        class="reaction-badge"
+                        [class.reacted]="group.reacted"
+                        (click)="addReaction(message.id, group.type, $event)"
+                        [title]="group.count + ' reaction(s)'">
+                        {{ getReactionEmoji(group.type) }} {{ group.count }}
+                      </button>
+                    }
+                  </div>
+                }
 
-              <!-- Message footer -->
-              <div class="message-footer">
-                <!-- Timestamp -->
-                <span class="message-time" [style.color]="message.own ? '#ffffff' : '#000000'">
+                <!-- Message footer -->
+                <div class="message-footer">
+                  <!-- Timestamp -->
+                  <span class="message-time" [style.color]="message.own ? '#ffffff' : '#000000'">
           {{ message.dateOfSending | date:'short' }}
         </span>
 
-                <!-- Status (only for own messages) -->
-                @if (message.own) {
-                  <span class="message-status" [class]="message.status">
+                  <!-- Status (only for own messages) -->
+                  @if (message.own) {
+                    <span class="message-status" [class]="message.status">
             @if (message.status === 'SENT') {
               ✓
             } @else if (isMessageDelivered(message)) {
@@ -260,42 +284,44 @@
               <span class="read-text" style="color: greenyellow">Read ✓✓</span>
             }
           </span>
-                }
-
-                <!-- Reaction trigger -->
-                <button class="reaction-trigger" (click)="toggleReactionPicker(message.id, $event)" title="Add reaction">
-                  😊
-                </button>
-
-                <!-- Save/Unsave button -->
-                <button class="save-btn"
-                        (click)="toggleSaveMessage(message.id, $event)"
-                        [class.saved]="message.isSaved"
-                        title="Save/Unsave message">
-                  {{ message.isSaved ? '⭐' : '☆' }}
-                </button>
-                <!-- Reply button -->
-                <button class="reply-btn" (click)="startReply(message.id)" title="Reply">
-                  ↩️
-                </button>
-                <!-- Forward button -->
-                <button class="forward-btn" (click)="startForward(message.id)" title="Forward">
-                  ➡️
-                </button>
-              </div>
-
-              <!-- Reaction picker -->
-              @if (reactionPickerMessageId === message.id) {
-                <div class="reaction-picker" (click)="$event.stopPropagation()">
-                  @for (type of reactionTypes; track type) {
-                    <button class="reaction-option" (click)="addReaction(message.id, type, $event)">
-                      {{ getReactionEmoji(type) }}
-                    </button>
                   }
+
+                  <!-- Reaction trigger -->
+                  <button class="reaction-trigger" (click)="toggleReactionPicker(message.id, $event)"
+                          title="Add reaction">
+                    😊
+                  </button>
+
+                  <!-- Save/Unsave button -->
+                  <button class="save-btn"
+                          (click)="toggleSaveMessage(message.id, $event)"
+                          [class.saved]="message.isSaved"
+                          title="Save/Unsave message">
+                    {{ message.isSaved ? '⭐' : '☆' }}
+                  </button>
+                  <!-- Reply button -->
+                  <button class="reply-btn" (click)="startReply(message.id)" title="Reply">
+                    ↩️
+                  </button>
+                  <!-- Forward button -->
+                  <button class="forward-btn" (click)="startForward(message.id)" title="Forward">
+                    ➡️
+                  </button>
                 </div>
-              }
-            </div> <!-- /message-content -->
-          </div> <!-- /message -->
+
+                <!-- Reaction picker -->
+                @if (reactionPickerMessageId === message.id) {
+                  <div class="reaction-picker" (click)="$event.stopPropagation()">
+                    @for (type of reactionTypes; track type) {
+                      <button class="reaction-option" (click)="addReaction(message.id, type, $event)">
+                        {{ getReactionEmoji(type) }}
+                      </button>
+                    }
+                  </div>
+                }
+              </div> <!-- /message-content -->
+            </div> <!-- /message -->
+          }
         }
 
         <!-- Empty state for search results -->
@@ -379,10 +405,10 @@
         <h3>Theme Preferences</h3>
         <div class="settings-option">
           <label>
-            <input type="radio" name="theme" value="light" checked /> Light Mode
+            <input type="radio" name="theme" value="light" checked/> Light Mode
           </label>
           <label>
-            <input type="radio" name="theme" value="dark" /> Dark Mode
+            <input type="radio" name="theme" value="dark"/> Dark Mode
           </label>
         </div>
       </div>
@@ -391,13 +417,13 @@
         <h3>Notifications</h3>
         <div class="settings-option">
           <label>
-            <input type="checkbox" checked /> Enable sound notifications
+            <input type="checkbox" checked/> Enable sound notifications
           </label>
           <label>
-            <input type="checkbox" checked /> Show desktop notifications
+            <input type="checkbox" checked/> Show desktop notifications
           </label>
           <label>
-            <input type="checkbox" /> Play sound on message send
+            <input type="checkbox"/> Play sound on message send
           </label>
         </div>
       </div>
@@ -406,13 +432,13 @@
         <h3>Privacy</h3>
         <div class="settings-option">
           <label>
-            <input type="checkbox" checked /> Show last seen
+            <input type="checkbox" checked/> Show last seen
           </label>
           <label>
-            <input type="checkbox" /> Read receipts
+            <input type="checkbox"/> Read receipts
           </label>
           <label>
-            <input type="checkbox" checked /> Allow messages from anyone
+            <input type="checkbox" checked/> Allow messages from anyone
           </label>
         </div>
       </div>
@@ -434,29 +460,6 @@
   </div>
 </div>
 
-<!-- Create Chat Modal -->
-<app-create-chat-modal
-  [isOpen]="showCreateChatModal"
-  [currentUserId]="currentUser?.id"
-  [currentUser]="currentUser"
-  [availableUsers]="availableUsers"
-  [isLoadingUsers]="isLoadingUsers"
-  [isCreatingChat]="isCreatingChat"
-  [createChatError]="createChatError"
-  [filterParams]="filterParams"
-  (close)="closeCreateChatModal()"
-  (typeSelected)="onChatTypeSelected($event)"
-  (back)="onChatBack()"
-  (proceed)="onChatProceed($event)"
-  (submitGroupChat)="onGroupChatSubmit($event)"
-  (participantToggled)="onParticipantToggled($event)"
-  (filtersChanged)="onFiltersChanged($event)"
-  (filterPanelToggled)="onFilterPanelToggled()"
-  (filtersReset)="onFiltersReset()"
-  (searchChanged)="onSearchChanged($event)">
-</app-create-chat-modal>
-
-
 @if (selectedChat) {
   <!-- Forward Modal -->
   <app-forward-modal
@@ -468,4 +471,26 @@
     (close)="closeForwardModal()"
     (forward)="handleForward($event)">
   </app-forward-modal>
+}
+<app-create-chat-modal
+  [isOpen]="showCreateChatModal"
+  [currentUserId]="currentUser?.id"
+  [currentUser]="currentUser"
+  [availableUsers]="availableUsers"
+  [isLoadingUsers]="isLoadingUsers"
+  [isCreatingChat]="isCreatingChat"
+  [createChatError]="createChatError"
+  [filterParams]="filterParams"
+  (close)="closeCreateChatModal()"
+  (chatCreated)="onChatCreated($event)">
+</app-create-chat-modal>
+
+@if (selectedChat && selectedChat.groupChat) {
+  <app-group-settings-modal
+    [isOpen]="showGroupSettingsModal"
+    [chat]="selectedChat"
+    [currentUserId]="currentUser?.id"
+    (close)="showGroupSettingsModal = false"
+    (groupUpdated)="onGroupUpdated($event)">
+  </app-group-settings-modal>
 }

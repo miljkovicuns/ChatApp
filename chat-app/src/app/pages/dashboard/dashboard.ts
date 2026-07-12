@@ -27,11 +27,13 @@ import {CreateChatModalComponent} from '../../modals/create-chat-modal-component
 import {Router, RouterLink, ActivatedRoute} from '@angular/router';
 import {Page} from '../../models/page';
 import {ForwardModal} from '../../modals/forward-modal/forward-modal';
+import {GroupService} from '../../services/group-service';
+import {GroupSettingsModalComponent} from '../../modals/group-settings-modal/group-settings-modal';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FormsModule, ProfileModalComponent, CreateChatModalComponent, RouterLink, ForwardModal],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, ProfileModalComponent, CreateChatModalComponent, RouterLink, ForwardModal, GroupSettingsModalComponent],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css'
 })
@@ -338,17 +340,20 @@ export class Dashboard implements OnInit,OnDestroy {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (chats: Chat[]) => {
+          console.log(chats)
           this.chats = chats
           this.isLoadingChats = false
           this.route.queryParams.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(params => {
             const chatId = params['chatId'];
             const messageId = params['messageId'];
-            if (chatId && messageId) {
+            if (chatId) {
               const chat = this.chats.find(c => c.id == chatId);
               if (chat) {
                 this.selectChat(chat);
                 // After messages loaded, scroll to that message
-                setTimeout(() => this.scrollToMessage(messageId), 500);
+                if(messageId){
+                  setTimeout(() => this.scrollToMessage(messageId), 500);
+                }
               }
             }
             this.clearQueryParams()
@@ -376,9 +381,9 @@ export class Dashboard implements OnInit,OnDestroy {
               isSaved: msg.isSaved,
               dateOfSending: msg.dateOfSending ? new Date(msg.dateOfSending) : null,
               status: msg.status || "SENT",
-              reactions: msg.reactions || [],
+              reactions: msg.reactions || []
             }));
-            console.log(this.messages[0].forwardedFrom)
+            console.log(messages[0].sender)
             this.isLoadingMessages = false;
             this.cdr.detectChanges();
           }else {
@@ -480,10 +485,11 @@ export class Dashboard implements OnInit,OnDestroy {
       console.warn('Invalid chat selected:', chat);
       return;
     }
-
     this.webSocketService.unsubscribeFromChat();
     this.selectedChat = chat;
     this.webSocketService.subscribeToChat(chat.id);
+    this.messages = []
+    this.cdr.detectChanges()
     this.loadMessages(chat.id);
     // @ts-ignore
     const unread = this.unreadCounts[chat.id]
@@ -494,10 +500,12 @@ export class Dashboard implements OnInit,OnDestroy {
       this.markMessagesAsRead(chat.id);
     }
     this.exitSearchMode();
+    this.cdr.detectChanges()
   }
 
   getOtherParticipant(chat: Chat) {
     const user = chat.participants.filter(user => user.id !== this.currentUser.id).at(0)
+    console.log(user?.profileImage)
     if(!user) {
       return null
     }
@@ -537,12 +545,19 @@ export class Dashboard implements OnInit,OnDestroy {
     }
   }
 
-  getChatAvatar(chat: Chat): string {
-    if (chat.groupChat) {
+  getChatAvatar(chat: Chat): SafeUrl | string {
+    if (chat.groupChat && chat.image) {
+      // If it's already a data URL, trust it; otherwise add base64 prefix
+      if (chat.image.startsWith('data:image')) {
+        return this.sanitizer.bypassSecurityTrustUrl(chat.image);
+      } else {
+        return this.sanitizer.bypassSecurityTrustUrl('data:image/png;base64,' + chat.image);
+      }
+    } else if (chat.groupChat) {
       return chat.name?.charAt(0)?.toUpperCase() || 'G';
     } else {
-      const otherParticipant = chat.participants?.find(p => p.id !== this.currentUser?.id);
-      return otherParticipant?.firstName?.charAt(0)?.toUpperCase() || 'U';
+      const other = chat.participants?.find(p => p.id !== this.currentUser?.id);
+      return other?.firstName?.charAt(0)?.toUpperCase() || 'U';
     }
   }
 
@@ -984,12 +999,12 @@ export class Dashboard implements OnInit,OnDestroy {
   //Create Chat Modal
   openCreateChatModal() {
     this.showCreateChatModal = true;
-    this.createChatStep = 'type';
+    this.createChatStep = 'type'; // no longer needed, but keep for consistency
     this.selectedChatType = 'direct';
     this.selectedParticipants = [];
     this.searchUserQuery = '';
     this.createChatError = null;
-    this.groupChatForm.reset();
+    this.groupChatForm.reset(); // no longer needed
     this.loadAvailableUsers();
   }
 
@@ -999,105 +1014,12 @@ export class Dashboard implements OnInit,OnDestroy {
     this.createChatError = null;
   }
 
-  // Event handlers for CreateChatModal
-  onChatTypeSelected(type: 'direct' | 'group') {
-    this.selectedChatType = type;
-    this.selectedParticipants = [];
-    this.createChatError = null;
-  }
-
-  onChatBack() {
-    if (this.createChatStep === 'participants') {
-      this.createChatStep = 'type';
-      this.selectedParticipants = [];
-    } else if (this.createChatStep === 'group-details') {
-      this.createChatStep = 'participants';
-    }
-  }
-
-  onChatProceed(event: { type: 'direct' | 'group', participants: User[] }) {
-    this.selectedParticipants = event.participants;
-
-    if (this.selectedParticipants.length === 0) {
-      this.createChatError = 'Please select at least one participant';
-      return;
-    }
-
-    if (event.type === 'direct') {
-      if (this.selectedParticipants.length !== 1) {
-        this.createChatError = 'Direct chat requires exactly one participant';
-        return;
-      }
-      this.createDirectChat();
-    } else {
-      this.createChatStep = 'group-details';
-    }
-  }
-
-  onGroupChatSubmit(event: { formData: any, participants: User[] }) {
-    this.selectedParticipants = event.participants;
-    if (this.groupChatForm.invalid) {
-      this.groupChatForm.markAllAsTouched();
-      return;
-    }
-    this.createGroupChat();
-  }
-
-  createDirectChat() {
-    this.isCreatingChat = true;
-    this.createChatError = null;
-
-    const participantIds = this.selectedParticipants.map(p => p.id);
-    participantIds.push(this.currentUser.id);
-
-    this.chatService.createDirectChat(participantIds)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (newChat: Chat) => {
-          this.isCreatingChat = false;
-          this.chats.unshift(newChat);
-          this.cdr.detectChanges();
-          this.closeCreateChatModal();
-        },
-        error: (err) => {
-          this.isCreatingChat = false;
-          this.createChatError = err.error?.message || 'Failed to create chat';
-        }
-      });
-  }
-
-  // Update createGroupChat to use selectedParticipants
-  createGroupChat() {
-    this.isCreatingChat = true;
-    this.createChatError = null;
-
-    const participantIds = this.selectedParticipants.map(p => p.id);
-    participantIds.push(this.currentUser.id);
-
-    const request: CreateGroupChatRequest = {
-      name: this.groupChatForm.get('name')?.value,
-      description: this.groupChatForm.get('description')?.value,
-      participantIds: participantIds
-    };
-
-    this.chatService.createGroupChat(request)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (newChat: Chat) => {
-          this.isCreatingChat = false;
-          this.chats.unshift(newChat);
-          this.closeCreateChatModal();
-        },
-        error: (err) => {
-          this.isCreatingChat = false;
-          this.createChatError = err.error?.message || 'Failed to create group chat';
-        }
-      });
-  }
-
-  onParticipantToggled(user: User) {
-    // Logic is handled in the component, we just need to update the parent
-    // The selectedParticipants is managed in the child component
+// New handler
+  onChatCreated(newChat: Chat) {
+    this.chats.unshift(newChat);
+    this.cdr.detectChanges();
+    this.closeCreateChatModal();
+    this.selectChat(newChat);
   }
 
   onFiltersChanged(params: UserFilterParams) {
@@ -1427,5 +1349,24 @@ export class Dashboard implements OnInit,OnDestroy {
   closeForwardModal() {
     this.showForwardModal = false;
     this.forwardingMessageId = null;
+  }
+
+  showGroupSettingsModal = false;
+  private groupService = inject(GroupService);
+
+  openGroupSettings() {
+    this.showGroupSettingsModal = true;
+  }
+
+  onGroupUpdated(updatedChat: Chat) {
+    // Update chat in list and selected chat
+    const index = this.chats.findIndex(c => c.id === updatedChat.id);
+    if (index !== -1) {
+      this.chats[index] = updatedChat;
+      if (this.selectedChat?.id === updatedChat.id) {
+        this.selectedChat = updatedChat;
+      }
+      this.cdr.detectChanges();
+    }
   }
 }

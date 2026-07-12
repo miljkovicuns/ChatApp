@@ -1,6 +1,7 @@
 package com.ftn.sr192024.messenger.models.dto;
 
 import com.ftn.sr192024.messenger.models.Message;
+import com.ftn.sr192024.messenger.models.MessageType;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -24,6 +25,7 @@ public class MessageResponseDto {
     private List<ReactionResponseDto> reactions;
     private MessageResponseDto replyTo;      // nested DTO
     private MessageResponseDto forwardedFrom; // nested DTO
+    private MessageType type;
 
     private static final DateTimeFormatter FORMATTER =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -75,6 +77,8 @@ public class MessageResponseDto {
             message.getForwardedFrom().setForwardedFrom(null);
             dto.setForwardedFrom(fromEntity(message.getForwardedFrom(), currentUserId));
         }
+
+        dto.setType(message.getType());
 
         return dto;
     }
